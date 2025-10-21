@@ -1,0 +1,43 @@
+{
+  "id": "sample-notebook-123",
+  "name": "Sample JavaScript Notebook",
+  "cells": [
+    {
+      "id": "cell-1",
+      "type": "code",
+      "content": "console.log('Hello World!')",
+      "output": {
+        "type": "text",
+        "content": "Hello World!",
+        "timestamp": 1728751577000
+      }
+    },
+    {
+      "id": "cell-2", 
+      "type": "code",
+      "content": "// Create a simple visualization\nconst div = document.createElement('div');\ndiv.innerHTML = '<h3>Dynamic Content</h3><p>Generated at: ' + new Date().toLocaleTimeString() + '</p>';\ndiv.style.cssText = 'background: #f0f9ff; padding: 1rem; border-radius: 0.5rem; border: 1px solid #0ea5e9;';\ndiv",
+      "output": {
+        "type": "html",
+        "content": "<div style=\"background: #f0f9ff; padding: 1rem; border-radius: 0.5rem; border: 1px solid #0ea5e9;\"><h3>Dynamic Content</h3><p>Generated at: 6:09:25 PM</p></div>",
+        "timestamp": 1728751765000
+      }
+    },
+    {
+      "id": "cell-3",
+      "type": "code", 
+      "content": "// Working with data\nconst data = [1, 2, 3, 4, 5];\nconst result = data.map(x => x * 2).filter(x => x > 4);\nconsole.log('Filtered results:', result);\nresult",
+      "output": {
+        "type": "text",
+        "content": "Filtered results: [6, 8, 10]\n[6, 8, 10]",
+        "timestamp": 1728751800000
+      }
+    },
+    {
+      "id": "cell-4",
+      "type": "markdown",
+      "content": "# Markdown Support\n\nThis notebook supports **markdown cells** for documentation:\n\n- Rich text formatting\n- Code blocks\n- Lists and tables\n- Mathematical expressions (future feature)\n\n```javascript\n// Code example in markdown\nconst example = 'syntax highlighting';\n```"
+    }
+  ],
+  "createdAt": 1728751200000,
+  "updatedAt": 1728751800000
+}

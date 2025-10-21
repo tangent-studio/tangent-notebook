@@ -1,0 +1,47 @@
+
+> frontend@0.0.0 dev
+> vite --host 0.0.0.0 --port 12000
+
+
+  VITE v3.2.11  ready in 273 ms
+
+  ➜  Local:   http://localhost:12000/
+  ➜  Network: http://10.2.113.15:12000/
+6:34:37 PM [vite-plugin-svelte] /src/lib/components/Sidebar.svelte:324:2 Unused CSS selector ".notebook-item-meta"
+6:34:38 PM [vite-plugin-svelte] /src/lib/components/Notebook.svelte:260:2 Unused CSS selector ".cells-container > * + *"
+6:34:38 PM [vite-plugin-svelte] /src/lib/components/AISettings.svelte:92:12 A11y: A form label must be associated with a control.
+6:34:38 PM [vite] warning: 
+/workspace/project/tangent-notebook/notebook-app/frontend/src/lib/utils/jsExecutor.ts
+97 |      try {
+98 |        const normalizedUrl = this.normalizeModuleUrl(moduleUrl);
+99 |        return await import(normalizedUrl);
+   |                            ^
+100|      } catch (error) {
+101|        throw new Error(`Failed to load module ${moduleUrl}: ${error.message}`);
+The above dynamic import cannot be analyzed by Vite.
+See https://github.com/rollup/plugins/tree/master/packages/dynamic-import-vars#limitations for supported dynamic import formats. If this is intended to be left as-is, you can use the /* @vite-ignore */ comment inside the import() call to suppress this warning.
+
+  Plugin: vite:import-analysis
+  File: /workspace/project/tangent-notebook/notebook-app/frontend/src/lib/utils/jsExecutor.ts
+6:34:38 PM [vite] warning: 
+/workspace/project/tangent-notebook/notebook-app/frontend/src/lib/utils/jsExecutor.ts
+135|        for (const lib of libraries) {
+136|          try {
+137|            const module = await import(lib.url);
+   |                                        ^
+138|            window[lib.name] = module.default || module;
+139|            loadedLibraries.push(lib.name);
+The above dynamic import cannot be analyzed by Vite.
+See https://github.com/rollup/plugins/tree/master/packages/dynamic-import-vars#limitations for supported dynamic import formats. If this is intended to be left as-is, you can use the /* @vite-ignore */ comment inside the import() call to suppress this warning.
+
+  Plugin: vite:import-analysis
+  File: /workspace/project/tangent-notebook/notebook-app/frontend/src/lib/utils/jsExecutor.ts
+6:37:05 PM [vite] hmr update /src/lib/components/ExportDialog.svelte
+hmr update /src/style.css
+hmr update /src/style.css
+6:37:09 PM [vite] hmr update /src/lib/components/ExportDialog.svelte
+hmr update /src/style.css
+hmr update /src/style.css
+6:37:13 PM [vite] hmr update /src/lib/components/ExportDialog.svelte
+hmr update /src/style.css
+hmr update /src/style.css

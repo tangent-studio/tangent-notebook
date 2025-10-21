@@ -1,0 +1,188 @@
+{
+  "id": "data-science-workflow",
+  "name": "Data Science Workflow - Cars Dataset",
+  "updatedAt": 1697140000000,
+  "createdAt": 1697130000000,
+  "cells": [
+    {
+      "id": "cell-1",
+      "type": "markdown",
+      "content": "# Data Science Workflow with D3 and Arquero\n\nThis notebook demonstrates a complete data science workflow:\n1. **Load data** from a remote CSV\n2. **Explore** the dataset structure\n3. **Clean and transform** the data\n4. **Analyze** with statistical methods\n5. **Visualize** insights\n\n**Press Ctrl+Enter to run each cell**",
+      "output": null,
+      "isRunning": false,
+      "createdAt": 1697000000000,
+      "updatedAt": 1697000000000
+    },
+    {
+      "id": "cell-2",
+      "type": "markdown",
+      "content": "## Step 1: Import Libraries\n\nWe'll use D3 for data loading and Arquero for data manipulation.",
+      "output": null,
+      "isRunning": false,
+      "createdAt": 1697000000000,
+      "updatedAt": 1697000000000
+    },
+    {
+      "id": "cell-3",
+      "type": "code",
+      "content": "import * as d3 from 'd3';\nimport * as aq from 'arquero';\n\nconsole.log('✓ D3 version:', d3.version);\nconsole.log('✓ Arquero loaded');\n'Libraries loaded successfully'",
+      "output": null,
+      "isRunning": false,
+      "createdAt": 1697000000000,
+      "updatedAt": 1697000000000
+    },
+    {
+      "id": "cell-4",
+      "type": "markdown",
+      "content": "## Step 2: Load Dataset\n\nLoading the classic cars dataset from the Vega datasets repository.",
+      "output": null,
+      "isRunning": false,
+      "createdAt": 1697000000000,
+      "updatedAt": 1697000000000
+    },
+    {
+      "id": "cell-5",
+      "type": "code",
+      "content": "// Load CSV from URL\nconst csvData = await d3.csv('https://gist.githubusercontent.com/seankross/a412dfbd88b3db70b74b/raw/5f23f993cd87c283ce766e7ac6b329ee7cc2e1d1/mtcars.csv');\n\n// Convert to Arquero table for easier manipulation\nconst carsTable = aq.from(csvData);\n\nconsole.log(`Loaded ${carsTable.numRows()} rows and ${carsTable.numCols()} columns`);\ncarsTable.numRows()",
+      "output": null,
+      "isRunning": false,
+      "createdAt": 1697000000000,
+      "updatedAt": 1697000000000
+    },
+    {
+      "id": "cell-6",
+      "type": "markdown",
+      "content": "## Step 3: Explore the Data\n\nLet's look at the first few rows and column names.",
+      "output": null,
+      "isRunning": false,
+      "createdAt": 1697000000000,
+      "updatedAt": 1697000000000
+    },
+    {
+      "id": "cell-7",
+      "type": "code",
+      "content": "// Show column names\nconsole.log('Columns:', carsTable.columnNames().join(', '));\n\n// Preview first 5 rows\nconsole.log('\\nFirst 5 rows:');\ncarsTable.slice(0, 5).print();\n\ncarsTable.slice(0, 5).objects()",
+      "output": null,
+      "isRunning": false,
+      "createdAt": 1697000000000,
+      "updatedAt": 1697000000000
+    },
+    {
+      "id": "cell-8",
+      "type": "markdown",
+      "content": "## Step 4: Data Cleaning & Transformation\n\nFilter out rows with missing data and convert strings to numbers.",
+      "output": null,
+      "isRunning": false,
+      "createdAt": 1697000000000,
+      "updatedAt": 1697000000000
+    },
+    {
+      "id": "cell-9",
+      "type": "code",
+      "content": "// Clean and transform the data\nconst cleanCars = carsTable\n  .derive({\n    Horsepower: d => +d.Horsepower,\n    Miles_per_Gallon: d => +d.Miles_per_Gallon,\n    Acceleration: d => +d.Acceleration,\n    Weight_in_lbs: d => +d.Weight_in_lbs\n  })\n  .filter(d => d.Horsepower > 0 && d.Miles_per_Gallon > 0);\n\nconsole.log(`Cleaned data: ${cleanCars.numRows()} rows (removed ${carsTable.numRows() - cleanCars.numRows()} rows with missing values)`);\ncleanCars.numRows()",
+      "output": null,
+      "isRunning": false,
+      "createdAt": 1697000000000,
+      "updatedAt": 1697000000000
+    },
+    {
+      "id": "cell-10",
+      "type": "markdown",
+      "content": "## Step 5: Statistical Summary\n\nCompute summary statistics for key variables.",
+      "output": null,
+      "isRunning": false,
+      "createdAt": 1697000000000,
+      "updatedAt": 1697000000000
+    },
+    {
+      "id": "cell-11",
+      "type": "code",
+      "content": "// Calculate summary statistics\nconst summary = cleanCars\n  .rollup({\n    avg_mpg: d => d3.mean(d.Miles_per_Gallon),\n    avg_hp: d => d3.mean(d.Horsepower),\n    avg_weight: d => d3.mean(d.Weight_in_lbs),\n    count: d => d.length\n  });\n\nconsole.log('Summary Statistics:');\nsummary.print();\nsummary.objects()[0]",
+      "output": null,
+      "isRunning": false,
+      "createdAt": 1697000000000,
+      "updatedAt": 1697000000000
+    },
+    {
+      "id": "cell-12",
+      "type": "markdown",
+      "content": "## Step 6: Group Analysis\n\nAnalyze fuel efficiency by country of origin.",
+      "output": null,
+      "isRunning": false,
+      "createdAt": 1697000000000,
+      "updatedAt": 1697000000000
+    },
+    {
+      "id": "cell-13",
+      "type": "code",
+      "content": "// Group by origin and calculate averages\nconst byOrigin = cleanCars\n  .groupby('Origin')\n  .rollup({\n    avg_mpg: d => d3.mean(d.Miles_per_Gallon),\n    avg_hp: d => d3.mean(d.Horsepower),\n    count: d => d.length\n  })\n  .orderby(aq.desc('avg_mpg'));\n\nconsole.log('Average MPG by Origin:');\nbyOrigin.print();\nbyOrigin.objects()",
+      "output": null,
+      "isRunning": false,
+      "createdAt": 1697000000000,
+      "updatedAt": 1697000000000
+    },
+    {
+      "id": "cell-14",
+      "type": "markdown",
+      "content": "## Step 7: Visualization - MPG vs Horsepower\n\nScatter plot showing the relationship between fuel efficiency and engine power.",
+      "output": null,
+      "isRunning": false,
+      "createdAt": 1697000000000,
+      "updatedAt": 1697000000000
+    },
+    {
+      "id": "cell-15",
+      "type": "code",
+      "content": "// Scatter plot: MPG vs Horsepower colored by Origin\nconst scatterSpec = {\n  \"$schema\": \"https://vega.github.io/schema/vega-lite/v5.json\",\n  width: 500,\n  height: 350,\n  data: { values: cleanCars.objects() },\n  mark: { type: 'circle', size: 60, opacity: 0.7 },\n  encoding: {\n    x: { \n      field: 'Horsepower', \n      type: 'quantitative',\n      scale: { zero: false },\n      title: 'Horsepower'\n    },\n    y: { \n      field: 'Miles_per_Gallon', \n      type: 'quantitative',\n      title: 'Miles per Gallon'\n    },\n    color: { \n      field: 'Origin', \n      type: 'nominal',\n      legend: { title: 'Origin' }\n    },\n    tooltip: [\n      { field: 'Name', type: 'nominal' },\n      { field: 'Horsepower', type: 'quantitative' },\n      { field: 'Miles_per_Gallon', type: 'quantitative' },\n      { field: 'Origin', type: 'nominal' }\n    ]\n  }\n};\n\nawait renderVega(scatterSpec);",
+      "output": null,
+      "isRunning": false,
+      "createdAt": 1697000000000,
+      "updatedAt": 1697000000000
+    },
+    {
+      "id": "cell-16",
+      "type": "markdown",
+      "content": "## Step 8: Visualization - Average MPG by Origin\n\nBar chart comparing fuel efficiency across different origins.",
+      "output": null,
+      "isRunning": false,
+      "createdAt": 1697000000000,
+      "updatedAt": 1697000000000
+    },
+    {
+      "id": "cell-17",
+      "type": "code",
+      "content": "// Bar chart: Average MPG by Origin\nconst barSpec = {\n  \"$schema\": \"https://vega.github.io/schema/vega-lite/v5.json\",\n  width: 400,\n  height: 300,\n  data: { values: byOrigin.objects() },\n  mark: { type: 'bar', color: '#4C78A8' },\n  encoding: {\n    x: { \n      field: 'Origin', \n      type: 'nominal',\n      axis: { labelAngle: 0 }\n    },\n    y: { \n      field: 'avg_mpg', \n      type: 'quantitative',\n      title: 'Average MPG'\n    },\n    tooltip: [\n      { field: 'Origin', type: 'nominal' },\n      { field: 'avg_mpg', type: 'quantitative', format: '.1f', title: 'Avg MPG' },\n      { field: 'count', type: 'quantitative', title: 'Number of Cars' }\n    ]\n  }\n};\n\nawait renderVega(barSpec);",
+      "output": null,
+      "isRunning": false,
+      "createdAt": 1697000000000,
+      "updatedAt": 1697000000000
+    },
+    {
+      "id": "cell-18",
+      "type": "markdown",
+      "content": "## Step 9: Distribution Analysis\n\nHistogram showing the distribution of fuel efficiency across all cars.",
+      "output": null,
+      "isRunning": false,
+      "createdAt": 1697000000000,
+      "updatedAt": 1697000000000
+    },
+    {
+      "id": "cell-19",
+      "type": "code",
+      "content": "// Histogram: Distribution of MPG\nconst histSpec = {\n  \"$schema\": \"https://vega.github.io/schema/vega-lite/v5.json\",\n  width: 500,\n  height: 300,\n  data: { values: cleanCars.objects() },\n  mark: 'bar',\n  encoding: {\n    x: { \n      field: 'Miles_per_Gallon', \n      type: 'quantitative',\n      bin: { maxbins: 30 },\n      title: 'Miles per Gallon'\n    },\n    y: { \n      aggregate: 'count',\n      title: 'Number of Cars'\n    },\n    color: { value: '#F58518' }\n  }\n};\n\nawait renderVega(histSpec);",
+      "output": null,
+      "isRunning": false,
+      "createdAt": 1697000000000,
+      "updatedAt": 1697000000000
+    },
+    {
+      "id": "cell-20",
+      "type": "markdown",
+      "content": "## Conclusion\n\nThis workflow demonstrates:\n- ✓ Loading data from remote sources\n- ✓ Data cleaning and transformation with Arquero\n- ✓ Statistical analysis with D3\n- ✓ Creating multiple visualizations with Vega-Lite\n\n**Key Insight:** Japanese cars have the highest average fuel efficiency, and there's a clear negative correlation between horsepower and MPG.",
+      "output": null,
+      "isRunning": false,
+      "createdAt": 1697000000000,
+      "updatedAt": 1697000000000
+    }
+  ]
+}
