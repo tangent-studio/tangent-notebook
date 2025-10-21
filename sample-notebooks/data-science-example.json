@@ -1,0 +1,96 @@
+{
+  "id": "sample-notebook-data",
+  "name": "Data Science Libraries Demo",
+  "createdAt": "2023-10-12T12:00:00.000Z",
+  "updatedAt": "2023-10-12T18:30:00.000Z",
+  "cells": [
+    {
+      "id": "cell-1",
+      "type": "markdown",
+      "content": "# Using Data Science Libraries\n\nYou can import **any ESM package** from npm using CDN imports.\n\nSupported CDNs:\n- Skypack (default)\n- esm.sh\n- unpkg\n- jsDelivr",
+      "output": null,
+      "createdAt": "2023-10-12T12:00:00.000Z",
+      "updatedAt": "2023-10-12T12:00:00.000Z"
+    },
+    {
+      "id": "cell-2",
+      "type": "markdown",
+      "content": "## Math.js - Advanced Mathematics",
+      "output": null,
+      "createdAt": "2023-10-12T12:01:00.000Z",
+      "updatedAt": "2023-10-12T12:01:00.000Z"
+    },
+    {
+      "id": "cell-3",
+      "type": "code",
+      "content": "import * as math from 'mathjs';\n\nconst matrix = math.matrix([[1, 2], [3, 4]]);\nconst det = math.det(matrix);\n\nconsole.log('Matrix:', matrix.toString());\nconsole.log('Determinant:', det);\n\n// Statistical functions\nconst data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];\nconst mean = math.mean(data);\nconst std = math.std(data);\n\nconsole.log('Mean:', mean);\nconsole.log('Std Dev:', std);\n\nconst result = {\n  matrix: matrix.toString(),\n  determinant: det,\n  mean: mean,\n  std: std\n};\nresult",
+      "output": null,
+      "createdAt": "2023-10-12T12:02:00.000Z",
+      "updatedAt": "2023-10-12T12:02:00.000Z"
+    },
+    {
+      "id": "cell-4",
+      "type": "markdown",
+      "content": "## Arquero - Data Transformation\n\nArquero provides a fluent API for data manipulation:",
+      "output": null,
+      "createdAt": "2023-10-12T12:03:00.000Z",
+      "updatedAt": "2023-10-12T12:03:00.000Z"
+    },
+    {
+      "id": "cell-5",
+      "type": "code",
+      "content": "import * as aq from 'arquero';\n\nconst data = aq.table({\n  name: ['Alice', 'Bob', 'Carol', 'David', 'Eve'],\n  age: [25, 30, 28, 35, 22],\n  score: [85, 92, 78, 95, 88]\n});\n\n// Filter and sort\nconst topScorers = data\n  .filter(d => d.score >= 85)\n  .orderby(aq.desc('score'));\n\nconsole.log('Top scorers:');\nconsole.log(topScorers.objects());\n\n// Calculate statistics\nconst stats = data\n  .rollup({\n    avgScore: d => aq.op.mean(d.score),\n    maxAge: d => aq.op.max(d.age),\n    count: d => aq.op.count()\n  });\n\nconsole.log('Statistics:');\nconsole.log(stats.objects());\n\nconst result = {\n  topScorers: topScorers.objects(),\n  stats: stats.objects()\n};\nresult",
+      "output": null,
+      "createdAt": "2023-10-12T12:04:00.000Z",
+      "updatedAt": "2023-10-12T12:04:00.000Z"
+    },
+    {
+      "id": "cell-6",
+      "type": "markdown",
+      "content": "## D3.js - Data Visualization\n\nD3 is pre-loaded, but you can also import specific versions:",
+      "output": null,
+      "createdAt": "2023-10-12T12:05:00.000Z",
+      "updatedAt": "2023-10-12T12:05:00.000Z"
+    },
+    {
+      "id": "cell-7",
+      "type": "code",
+      "content": "import * as d3 from 'd3';\n\nconst dataset = [10, 20, 15, 30, 25, 18];\n\n// Create SVG bar chart\nconst width = 500;\nconst height = 200;\nconst barWidth = width / dataset.length;\n\nconst svg = d3.create('svg')\n  .attr('width', width)\n  .attr('height', height);\n\nsvg.selectAll('rect')\n  .data(dataset)\n  .join('rect')\n  .attr('x', (d, i) => i * barWidth)\n  .attr('y', d => height - d * 5)\n  .attr('width', barWidth - 2)\n  .attr('height', d => d * 5)\n  .attr('fill', '#2563eb');\n\nsvg.selectAll('text')\n  .data(dataset)\n  .join('text')\n  .text(d => d)\n  .attr('x', (d, i) => i * barWidth + barWidth / 2)\n  .attr('y', d => height - d * 5 - 5)\n  .attr('text-anchor', 'middle')\n  .attr('fill', '#1a1a1a')\n  .attr('font-size', '12px');\n\nsvg.node()",
+      "output": null,
+      "createdAt": "2023-10-12T12:06:00.000Z",
+      "updatedAt": "2023-10-12T12:06:00.000Z"
+    },
+    {
+      "id": "cell-8",
+      "type": "markdown",
+      "content": "## Using Other Libraries\n\nYou can import any package from npm:",
+      "output": null,
+      "createdAt": "2023-10-12T12:07:00.000Z",
+      "updatedAt": "2023-10-12T12:07:00.000Z"
+    },
+    {
+      "id": "cell-9",
+      "type": "code",
+      "content": "// Lodash for utility functions\nimport _ from 'lodash';\n\nconst numbers = [10, 20, 30, 40, 50];\nconst chunks = _.chunk(numbers, 2);\nconst shuffled = _.shuffle(numbers);\n\nconsole.log('Chunked:', chunks);\nconsole.log('Shuffled:', shuffled);\n\nconst result = {\n  chunks: chunks,\n  shuffled: shuffled\n};\nresult",
+      "output": null,
+      "createdAt": "2023-10-12T12:08:00.000Z",
+      "updatedAt": "2023-10-12T12:08:00.000Z"
+    },
+    {
+      "id": "cell-10",
+      "type": "markdown",
+      "content": "## Custom CDN URLs\n\nYou can also specify exact CDN URLs:",
+      "output": null,
+      "createdAt": "2023-10-12T12:09:00.000Z",
+      "updatedAt": "2023-10-12T12:09:00.000Z"
+    },
+    {
+      "id": "cell-11",
+      "type": "code",
+      "content": "// Using esm.sh\nimport dayjs from 'https://esm.sh/dayjs@1.11.10';\n\nconst now = dayjs();\nconst formatted = now.format('YYYY-MM-DD HH:mm:ss');\n\nconsole.log('Current time:', formatted);\n\nconst result = {\n  timestamp: formatted,\n  unix: now.unix()\n};\nresult",
+      "output": null,
+      "createdAt": "2023-10-12T12:10:00.000Z",
+      "updatedAt": "2023-10-12T12:10:00.000Z"
+    }
+  ]
+}

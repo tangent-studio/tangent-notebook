@@ -1,0 +1,80 @@
+{
+  "id": "plotting-demo",
+  "name": "Data Visualization with D3 and Observable Plot",
+  "createdAt": "2023-10-13T00:00:00.000Z",
+  "updatedAt": "2023-10-13T00:00:00.000Z",
+  "cells": [
+    {
+      "id": "cell-1",
+      "type": "markdown",
+      "content": "# Data Visualization Examples\n\nThis notebook demonstrates real plotting libraries:\n- D3.js for custom visualizations\n- Observable Plot for quick charts\n- CSV and JSON data loading",
+      "output": null,
+      "createdAt": "2023-10-13T00:00:00.000Z",
+      "updatedAt": "2023-10-13T00:00:00.000Z"
+    },
+    {
+      "id": "cell-2",
+      "type": "markdown",
+      "content": "## D3.js Bar Chart\n\nCreating an SVG bar chart with D3:",
+      "output": null,
+      "createdAt": "2023-10-13T00:00:00.000Z",
+      "updatedAt": "2023-10-13T00:00:00.000Z"
+    },
+    {
+      "id": "cell-3",
+      "type": "code",
+      "content": "import * as d3 from 'd3';\n\nconst data = [12, 19, 3, 5, 2, 15, 25, 8];\nconst width = 600;\nconst height = 200;\nconst margin = { top: 20, right: 20, bottom: 30, left: 40 };\n\nconst x = d3.scaleBand()\n  .domain(d3.range(data.length))\n  .range([margin.left, width - margin.right])\n  .padding(0.1);\n\nconst y = d3.scaleLinear()\n  .domain([0, d3.max(data)])\n  .range([height - margin.bottom, margin.top]);\n\nconst svg = d3.create('svg')\n  .attr('width', width)\n  .attr('height', height)\n  .attr('viewBox', [0, 0, width, height]);\n\nsvg.selectAll('rect')\n  .data(data)\n  .join('rect')\n  .attr('x', (d, i) => x(i))\n  .attr('y', d => y(d))\n  .attr('height', d => y(0) - y(d))\n  .attr('width', x.bandwidth())\n  .attr('fill', 'steelblue');\n\nsvg.selectAll('text')\n  .data(data)\n  .join('text')\n  .attr('x', (d, i) => x(i) + x.bandwidth() / 2)\n  .attr('y', d => y(d) - 5)\n  .attr('text-anchor', 'middle')\n  .attr('font-size', '12px')\n  .text(d => d);\n\nsvg.node()",
+      "output": null,
+      "createdAt": "2023-10-13T00:00:00.000Z",
+      "updatedAt": "2023-10-13T00:00:00.000Z"
+    },
+    {
+      "id": "cell-4",
+      "type": "markdown",
+      "content": "## Observable Plot\n\nPlot provides a simpler API for common charts:",
+      "output": null,
+      "createdAt": "2023-10-13T00:00:00.000Z",
+      "updatedAt": "2023-10-13T00:00:00.000Z"
+    },
+    {
+      "id": "cell-5",
+      "type": "code",
+      "content": "import * as Plot from '@observablehq/plot';\n\nconst plotData = [\n  { category: 'A', value: 23 },\n  { category: 'B', value: 45 },\n  { category: 'C', value: 12 },\n  { category: 'D', value: 67 },\n  { category: 'E', value: 34 }\n];\n\nconst chart = Plot.plot({\n  marks: [\n    Plot.barY(plotData, { x: 'category', y: 'value', fill: 'steelblue' })\n  ],\n  y: { grid: true },\n  marginBottom: 40\n});\n\nchart",
+      "output": null,
+      "createdAt": "2023-10-13T00:00:00.000Z",
+      "updatedAt": "2023-10-13T00:00:00.000Z"
+    },
+    {
+      "id": "cell-6",
+      "type": "markdown",
+      "content": "## Loading CSV Data\n\nUse D3 to fetch and parse CSV files:",
+      "output": null,
+      "createdAt": "2023-10-13T00:00:00.000Z",
+      "updatedAt": "2023-10-13T00:00:00.000Z"
+    },
+    {
+      "id": "cell-7",
+      "type": "code",
+      "content": "import * as d3 from 'd3';\n\n// Load CSV from URL\nconst csvData = await d3.csv('https://raw.githubusercontent.com/vega/vega-datasets/master/data/cars.csv');\n\n// Show first 5 rows\nconsole.log('Loaded', csvData.length, 'rows');\ncsvData.slice(0, 5)",
+      "output": null,
+      "createdAt": "2023-10-13T00:00:00.000Z",
+      "updatedAt": "2023-10-13T00:00:00.000Z"
+    },
+    {
+      "id": "cell-8",
+      "type": "markdown",
+      "content": "## Scatter Plot with Real Data",
+      "output": null,
+      "createdAt": "2023-10-13T00:00:00.000Z",
+      "updatedAt": "2023-10-13T00:00:00.000Z"
+    },
+    {
+      "id": "cell-9",
+      "type": "code",
+      "content": "import * as Plot from '@observablehq/plot';\nimport * as d3 from 'd3';\n\nconst cars = await d3.csv('https://raw.githubusercontent.com/vega/vega-datasets/master/data/cars.csv', d3.autoType);\n\nconst scatter = Plot.plot({\n  marks: [\n    Plot.dot(cars, {\n      x: 'Horsepower',\n      y: 'Miles_per_Gallon',\n      fill: 'Origin',\n      title: 'Name'\n    })\n  ],\n  grid: true,\n  color: { legend: true }\n});\n\nscatter",
+      "output": null,
+      "createdAt": "2023-10-13T00:00:00.000Z",
+      "updatedAt": "2023-10-13T00:00:00.000Z"
+    }
+  ]
+}

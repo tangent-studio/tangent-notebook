@@ -1,0 +1,88 @@
+{
+  "id": "sample-notebook-1",
+  "name": "Sample Notebook - Getting Started",
+  "createdAt": "2023-10-12T12:00:00.000Z",
+  "updatedAt": "2023-10-12T18:30:00.000Z",
+  "cells": [
+    {
+      "id": "cell-1",
+      "type": "markdown",
+      "content": "# Welcome to Tangent Notebook\n\nThis is a sample notebook to get you started.\n\n**Press `Ctrl/Enter` to run a cell**",
+      "output": null,
+      "createdAt": "2023-10-12T12:00:00.000Z",
+      "updatedAt": "2023-10-12T12:00:00.000Z"
+    },
+    {
+      "id": "cell-2",
+      "type": "code",
+      "content": "// Simple JavaScript example\nconst message = 'Hello from Tangent Notebook!';\nconsole.log(message);\nmessage",
+      "output": null,
+      "createdAt": "2023-10-12T12:01:00.000Z",
+      "updatedAt": "2023-10-12T12:01:00.000Z"
+    },
+    {
+      "id": "cell-3",
+      "type": "code",
+      "content": "// Variables are shared between cells\nconst numbers = [1, 2, 3, 4, 5];\nconst sum = numbers.reduce((a, b) => a + b, 0);\nconsole.log('Sum:', sum);\nsum",
+      "output": null,
+      "createdAt": "2023-10-12T12:02:00.000Z",
+      "updatedAt": "2023-10-12T12:02:00.000Z"
+    },
+    {
+      "id": "cell-4",
+      "type": "markdown",
+      "content": "## Importing Libraries\n\nYou can import ES modules:",
+      "output": null,
+      "createdAt": "2023-10-12T12:03:00.000Z",
+      "updatedAt": "2023-10-12T12:03:00.000Z"
+    },
+    {
+      "id": "cell-5",
+      "type": "code",
+      "content": "import * as d3 from 'd3';\nconsole.log('d3 version:', d3.version);",
+      "output": null,
+      "createdAt": "2023-10-12T12:04:00.000Z",
+      "updatedAt": "2023-10-12T12:04:00.000Z"
+    },
+    {
+      "id": "cell-6",
+      "type": "code",
+      "content": "// Use d3 from previous cell\nconst data = [10, 20, 30, 40, 50];\nconst mean = d3.mean(data);\nconsole.log('Mean:', mean);\nmean",
+      "output": null,
+      "createdAt": "2023-10-12T12:05:00.000Z",
+      "updatedAt": "2023-10-12T12:05:00.000Z"
+    },
+    {
+      "id": "cell-7",
+      "type": "markdown",
+      "content": "## Creating HTML Output\n\nYou can create dynamic visualizations:",
+      "output": null,
+      "createdAt": "2023-10-12T12:06:00.000Z",
+      "updatedAt": "2023-10-12T12:06:00.000Z"
+    },
+    {
+      "id": "cell-8",
+      "type": "code",
+      "content": "// Create a simple bar chart with HTML/CSS\nconst chartData = [10, 25, 15, 30, 20];\nconst maxValue = Math.max(...chartData);\n\nconst chart = document.createElement('div');\nchart.style.cssText = 'padding: 20px; background: #f8fafc; border-radius: 8px;';\n\nconst title = document.createElement('h3');\ntitle.textContent = 'Simple Bar Chart';\ntitle.style.cssText = 'margin: 0 0 15px 0; color: #1a1a1a;';\nchart.appendChild(title);\n\nchartData.forEach((value, i) => {\n  const bar = document.createElement('div');\n  bar.style.cssText = `\n    height: 30px;\n    margin: 5px 0;\n    background: linear-gradient(90deg, #2563eb, #3b82f6);\n    border-radius: 4px;\n    width: ${(value / maxValue * 100)}%;\n    display: flex;\n    align-items: center;\n    padding-left: 10px;\n    color: white;\n    font-weight: 500;\n  `;\n  bar.textContent = value;\n  chart.appendChild(bar);\n});\n\nchart",
+      "output": null,
+      "createdAt": "2023-10-12T12:07:00.000Z",
+      "updatedAt": "2023-10-12T12:07:00.000Z"
+    },
+    {
+      "id": "cell-9",
+      "type": "markdown",
+      "content": "## Working with Arrays\n\nJavaScript array methods work great for data manipulation:",
+      "output": null,
+      "createdAt": "2023-10-12T12:08:00.000Z",
+      "updatedAt": "2023-10-12T12:08:00.000Z"
+    },
+    {
+      "id": "cell-10",
+      "type": "code",
+      "content": "// Data manipulation example\nconst scores = [\n  { name: 'Alice', score: 85 },\n  { name: 'Bob', score: 92 },\n  { name: 'Carol', score: 78 },\n  { name: 'David', score: 95 }\n];\n\nconst topScores = scores\n  .filter(s => s.score >= 85)\n  .sort((a, b) => b.score - a.score);\n\nconsole.log('Top scores:', topScores);\ntopScores",
+      "output": null,
+      "createdAt": "2023-10-12T12:09:00.000Z",
+      "updatedAt": "2023-10-12T12:09:00.000Z"
+    }
+  ]
+}
