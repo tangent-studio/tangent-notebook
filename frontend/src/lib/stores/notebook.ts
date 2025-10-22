@@ -10,16 +10,28 @@ export const notebookFiles = writable<NotebookFile[]>([]);
 // Currently selected cell
 export const selectedCellId = writable<string | null>(null);
 
+export const notebookDirty = writable(false);
+
+export function markNotebookDirty(): void {
+  notebookDirty.set(true);
+}
+
+export function markNotebookClean(): void {
+  notebookDirty.set(false);
+}
+
 // Create a new notebook
 export function createNewNotebook(): Notebook {
   const now = Date.now();
-  return {
+  const notebook = {
     id: `notebook-${now}`,
     name: 'Untitled Notebook',
     cells: [createNewCell()],
     createdAt: now,
     updatedAt: now
   };
+  markNotebookClean();
+  return notebook;
 }
 
 // Create a new cell
@@ -34,6 +46,7 @@ export function createNewCell(type: 'code' | 'markdown' = 'code'): NotebookCell 
 
 // Update cell content
 export function updateCellContent(notebook: Notebook, cellId: string, content: string): Notebook {
+  markNotebookDirty();
   return {
     ...notebook,
     cells: notebook.cells.map(cell => 
@@ -49,6 +62,7 @@ export function addCellAfter(notebook: Notebook, afterCellId: string, type: 'cod
   const newCell = createNewCell(type);
   const newCells = [...notebook.cells];
   newCells.splice(cellIndex + 1, 0, newCell);
+  markNotebookDirty();
   
   return {
     ...notebook,
@@ -60,6 +74,7 @@ export function addCellAfter(notebook: Notebook, afterCellId: string, type: 'cod
 // Delete cell
 export function deleteCell(notebook: Notebook, cellId: string): Notebook {
   if (notebook.cells.length <= 1) return notebook; // Don't delete the last cell
+  markNotebookDirty();
   
   return {
     ...notebook,
@@ -75,6 +90,7 @@ export function moveCellUp(notebook: Notebook, cellId: string): Notebook {
   
   const newCells = [...notebook.cells];
   [newCells[cellIndex - 1], newCells[cellIndex]] = [newCells[cellIndex], newCells[cellIndex - 1]];
+  markNotebookDirty();
   
   return {
     ...notebook,
@@ -90,6 +106,7 @@ export function moveCellDown(notebook: Notebook, cellId: string): Notebook {
   
   const newCells = [...notebook.cells];
   [newCells[cellIndex], newCells[cellIndex + 1]] = [newCells[cellIndex + 1], newCells[cellIndex]];
+  markNotebookDirty();
   
   return {
     ...notebook,

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import Cell from './Cell.svelte';
-  import { currentNotebook, selectedCellId } from '../stores/notebook';
+  import { currentNotebook, selectedCellId, markNotebookDirty } from '../stores/notebook';
   import { 
     updateCellContent, 
     addCellAfter, 
@@ -10,7 +10,7 @@
     moveCellDown 
   } from '../stores/notebook';
   import { JavaScriptExecutor } from '../utils/jsExecutor';
-  import type { NotebookCell } from '../types/notebook';
+  import type { Notebook, NotebookCell } from '../types/notebook';
   
   let jsExecutor: JavaScriptExecutor;
   let isRunningAll = false;
@@ -162,14 +162,23 @@
 
   const UNTITLED = 'Untitled Notebook';
 
+  function getNotebookSnapshot(): Notebook | null {
+    let snapshot: Notebook | null = null;
+    const unsubscribe = currentNotebook.subscribe(n => snapshot = n);
+    unsubscribe();
+    return snapshot;
+  }
+
   function updateNotebookTitle(newTitle: string) {
     const title = newTitle.trim() || UNTITLED;
     currentNotebook.update((notebook) => {
       if (!notebook) return notebook;
+      if (notebook.name === title) return notebook;
+      markNotebookDirty();
       return {
         ...notebook,
         name: title,
-        updatedAt: new Date().toISOString()
+        updatedAt: Date.now()
       };
     });
   }
@@ -238,6 +247,7 @@
   
   function handleCellTypeChange(event: CustomEvent) {
     const { cellId, type } = event.detail;
+    markNotebookDirty();
     currentNotebook.update(notebook => {
       if (!notebook) return notebook;
       return {
@@ -246,60 +256,64 @@
           cell.id === cellId 
             ? { ...cell, type, output: undefined }
             : cell
-        )
+        ),
+        updatedAt: Date.now()
       };
     });
   }
   
+  async function runCellById(cellId: string): Promise<void> {
+    const notebook = getNotebookSnapshot();
+    if (!notebook) return;
+    const cell = notebook.cells.find(c => c.id === cellId);
+    if (!cell) return;
+
+    if (cell.type === 'markdown') {
+      const evt = new CustomEvent('render-markdown', { detail: { cellId } });
+      window.dispatchEvent(evt);
+    } else {
+      await handleRunCell({ detail: { cellId } } as CustomEvent);
+    }
+  }
+
   // Keyboard shortcuts
-  function handleKeydown(event: KeyboardEvent) {
+  async function handleKeydown(event: KeyboardEvent) {
+    const activeCellId = $selectedCellId;
+    if (!activeCellId) return;
+
     // Run cell: Ctrl/Cmd+Enter
     if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
       event.preventDefault();
-      if ($selectedCellId) {
-        // Check if it's a markdown cell
-        let notebook = null;
-        const unsub = currentNotebook.subscribe(n => notebook = n);
-        unsub();
-        const cell = notebook?.cells.find(c => c.id === $selectedCellId);
-        
-        if (cell?.type === 'markdown') {
-          // Trigger markdown rendering
-          const evt = new CustomEvent('render-markdown', { detail: { cellId: $selectedCellId } });
-          window.dispatchEvent(evt);
-        } else {
-          handleRunCell({ detail: { cellId: $selectedCellId } });
-        }
-      }
+      await runCellById(activeCellId);
+      return;
+    }
+
+    // Run cell + insert below: Alt/Option+Enter
+    if (event.altKey && event.key === 'Enter') {
+      event.preventDefault();
+      await runCellById(activeCellId);
+      const addEvent = new CustomEvent('add-cell-below', { detail: { afterCellId: activeCellId } });
+      handleAddCell(addEvent);
       return;
     }
 
     // Run cell: Shift+Enter -> run and select next cell
     if (event.shiftKey && event.key === 'Enter') {
       event.preventDefault();
-      if ($selectedCellId) {
-        // Check if it's a markdown cell
-        let notebook = null;
-        const unsub = currentNotebook.subscribe(n => notebook = n);
-        unsub();
-        const cell = notebook?.cells.find(c => c.id === $selectedCellId);
-        
-        if (cell?.type === 'markdown') {
-          // Trigger markdown rendering
-          const evt = new CustomEvent('render-markdown', { detail: { cellId: $selectedCellId } });
-          window.dispatchEvent(evt);
-        } else {
-          handleRunCell({ detail: { cellId: $selectedCellId } });
-        }
+      await runCellById(activeCellId);
 
-        // Move focus to next cell (if exists)
-        if (notebook) {
-          const idx = notebook.cells.findIndex(c => c.id === $selectedCellId);
-          if (idx >= 0 && idx < notebook.cells.length - 1) {
-            const next = notebook.cells[idx + 1];
-            selectedCellId.set(next.id);
-          }
-        }
+      const notebookAfter = getNotebookSnapshot();
+      if (!notebookAfter) return;
+
+      const idx = notebookAfter.cells.findIndex(c => c.id === activeCellId);
+      if (idx === -1) return;
+
+      if (idx < notebookAfter.cells.length - 1) {
+        const next = notebookAfter.cells[idx + 1];
+        selectedCellId.set(next.id);
+      } else {
+        const addEvent = new CustomEvent('add-cell-below', { detail: { afterCellId: activeCellId } });
+        handleAddCell(addEvent);
       }
       return;
     }
@@ -365,59 +379,59 @@
 
 <style>
   .notebook-container {
-    max-width: 960px;
+    max-width: 900px;
     margin: 0 auto;
-    padding: 2rem 2rem 4rem;
+    padding: 1.5rem 1.5rem 2.5rem;
   }
   
   .notebook-header {
-    margin-bottom: 3rem;
+    margin-bottom: 1.75rem;
   }
   
   .notebook-title {
-    font-size: 2.5rem;
+    font-size: 2.2rem;
     font-weight: 700;
     color: #1a1a1a;
-    margin: 0 0 0.75rem 0;
+    margin: 0 0 0.5rem 0;
     outline: none;
-    line-height: 1.2;
-    letter-spacing: -0.02em;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
   }
   
   .notebook-title:focus {
-    background-color: #fffbeb;
-    padding: 0.25rem 0.5rem;
+    background-color: #fff5d6;
+    padding: 0.125rem 0.35rem;
     border-radius: 4px;
   }
 
   .cells-container {
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
   }
   
   .notebook-footer {
     display: flex;
     justify-content: center;
-    padding-top: 2rem;
+    padding-top: 1.5rem;
   }
   
   .add-cell-btn {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.625rem 1.25rem;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
     background-color: transparent;
-    color: #6b6b6b;
-    border: 1px solid #d0d0d0;
-    border-radius: 6px;
-    font-size: 0.875rem;
+    color: #5a5a5a;
+    border: 1px solid #c8c8c8;
+    border-radius: 5px;
+    font-size: 0.8125rem;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.15s ease;
   }
   
   .add-cell-btn:hover {
-    background-color: #f5f5f5;
-    border-color: #a0a0a0;
+    background-color: #f4f4f4;
+    border-color: #9c9c9c;
     color: #1a1a1a;
   }
   

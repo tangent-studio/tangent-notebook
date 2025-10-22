@@ -128,9 +128,9 @@
 
 <style>
   .output-container {
-    margin-top: 1rem;
-    border-top: 1px solid #e8e8e8;
-    padding-top: 0.75rem;
+    margin-top: 0.75rem;
+    border-top: 1px solid #ededed;
+    padding-top: 0.6rem;
   }
 
   .output-content {
@@ -149,16 +149,50 @@
     height: auto;
   }
 
+  .output-content :global(.tangent-table-output) {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Fira Code', 'Fira Sans', sans-serif;
+    font-size: 0.75rem;
+    line-height: 1.45;
+    color: #2d2d2d;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .output-content :global(.tangent-table-output thead) {
+    background-color: #f4f5f7;
+  }
+
+  .output-content :global(.tangent-table-output th),
+  .output-content :global(.tangent-table-output td) {
+    border: 1px solid #eceef1;
+    padding: 0.35rem 0.6rem;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .output-content :global(.tangent-table-output th) {
+    font-weight: 600;
+    color: #1f2933;
+    letter-spacing: 0.01em;
+  }
+
+  .output-content :global(.tangent-table-output tbody tr:nth-child(even)) {
+    background-color: #fafbfc;
+  }
+
   .json-output,
   .text-output {
-    font-size: 0.875rem;
+    font-size: 0.825rem;
     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
     white-space: pre-wrap;
     word-break: break-word;
     margin: 0;
-    padding: 0.75rem 1rem;
+    padding: 0.6rem 0.85rem;
     background-color: #fafafa;
-    border-radius: 6px;
+    border-radius: 5px;
     border: 1px solid #e8e8e8;
     line-height: 1.5;
   }
@@ -168,12 +202,12 @@
   }
 
   .json-tree {
-    font-size: 0.875rem;
+    font-size: 0.825rem;
     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
     background-color: #fafafa;
-    border-radius: 6px;
+    border-radius: 5px;
     border: 1px solid #e8e8e8;
-    padding: 0.5rem 0.75rem;
+    padding: 0.4rem 0.6rem;
     overflow-x: auto;
   }
 

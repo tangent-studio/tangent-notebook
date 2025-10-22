@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, tick } from 'svelte';
   import { marked } from 'marked';
   import katex from 'katex';
   import MonacoEditor from './MonacoEditor.svelte';
@@ -37,10 +37,24 @@
 
   function handleEditMarkdown() {
     isEditingMarkdown = true;
+    dispatch('select', { cellId: cell.id });
   }
 
   function handleCellClick() {
     dispatch('select', { cellId: cell.id });
+  }
+
+  function handleCellMouseDown() {
+    dispatch('select', { cellId: cell.id });
+    if (cell.type === 'code' && editorRef) {
+      requestAnimationFrame(() => {
+        try {
+          editorRef.focus();
+        } catch {
+          // ignore focus failures
+        }
+      });
+    }
   }
 
   function handleAddCell() {
@@ -63,6 +77,10 @@
     dispatch('typeChange', { cellId: cell.id, type });
   }
 
+  function handleEditorFocus() {
+    dispatch('select', { cellId: cell.id });
+  }
+
   // Rendered HTML for markdown preview
   let renderedMarkdown = '';
   let markdownPreview: any = null;
@@ -73,7 +91,7 @@
   function autoResizeTextarea(textarea: HTMLTextAreaElement) {
     if (textarea) {
       textarea.style.height = 'auto';
-      textarea.style.height = Math.max(120, textarea.scrollHeight) + 'px';
+      textarea.style.height = Math.max(56, textarea.scrollHeight) + 'px';
     }
   }
 
@@ -85,6 +103,25 @@
 
   $: if (markdownTextarea && cell.type === 'markdown') {
     autoResizeTextarea(markdownTextarea);
+  }
+
+  async function focusActiveContent() {
+    await tick();
+    if (!isSelected) return;
+
+    if (cell.type === 'code' && editorRef) {
+      editorRef.focus();
+    } else if (cell.type === 'markdown') {
+      if (isEditingMarkdown && markdownTextarea) {
+        markdownTextarea.focus();
+      } else if (markdownPreview) {
+        markdownPreview.focus();
+      }
+    }
+  }
+
+  $: if (isSelected) {
+    focusActiveContent();
   }
 
   // Listen for render-markdown event
@@ -130,6 +167,7 @@
 
   <div
     class="cell-container"
+    on:mousedown|capture={handleCellMouseDown}
     on:click={handleCellClick}
     role="button"
     tabindex="0"
@@ -223,6 +261,8 @@
           on:change={handleContentChange}
           on:run={handleRun}
           on:runAndAdvance={handleRunAndAdvance}
+          on:editorFocus={handleEditorFocus}
+          on:focus={handleEditorFocus}
         />
       {:else}
         <div class="markdown-wrapper">
@@ -231,6 +271,7 @@
               bind:this={markdownTextarea}
               value={cell.content}
               on:input={handleMarkdownInput}
+              on:focus={handleEditorFocus}
               class="markdown-editor"
               placeholder="Enter markdown..."
               data-testid="markdown-editor"
@@ -262,8 +303,8 @@
 <style>
   .cell-wrapper {
     position: relative;
-    margin-bottom: 1.5rem;
-    padding-left: 0.5rem;
+    margin-bottom: 1.1rem;
+    padding-left: 0.375rem;
     transition: all 0.2s ease;
   }
 
@@ -288,40 +329,42 @@
 
   .cell-container {
     background-color: #ffffff;
-    border-radius: 8px;
+    border-radius: 6px;
     transition: all 0.2s ease;
     position: relative;
+    border: 1px solid transparent;
   }
 
   .cell-wrapper:hover .cell-container {
-    background-color: #fafafa;
+    background-color: #f9f9f9;
   }
 
   .cell-wrapper.selected .cell-container {
-    background-color: #fafafa;
+    background-color: #f7f7f7;
+    border-color: #e0e0e0;
   }
 
   .cell-toolbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.5rem 0.75rem;
-    margin-bottom: 0.5rem;
-    border-bottom: 1px solid #e8e8e8;
+    padding: 0.4rem 0.6rem;
+    margin-bottom: 0.4rem;
+    border-bottom: 1px solid #ebebeb;
   }
 
   .toolbar-left,
   .toolbar-right {
     display: flex;
     align-items: center;
-    gap: 0.375rem;
+    gap: 0.3rem;
   }
 
   .toolbar-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0.375rem;
+    padding: 0.3rem;
     background-color: transparent;
     color: #6b6b6b;
     border: none;
@@ -343,6 +386,8 @@
   .run-btn {
     background-color: #1a1a1a;
     color: white;
+    padding: 0.3rem 0.5rem;
+    border-radius: 4px;
   }
 
   .run-btn:hover:not(:disabled) {
@@ -355,10 +400,10 @@
   }
 
   .cell-type-select {
-    font-size: 0.8125rem;
-    border: 1px solid #d0d0d0;
+    font-size: 0.75rem;
+    border: 1px solid #cccccc;
     border-radius: 4px;
-    padding: 0.25rem 0.5rem;
+    padding: 0.2rem 0.45rem;
     background-color: white;
     color: #4a4a4a;
     cursor: pointer;
@@ -374,22 +419,22 @@
     border-color: #1a1a1a;
   }
 
-  .cell-content {
-    padding: 0.75rem 1rem 1rem;
-    min-height: 60px;
-  }
+.cell-content {
+  padding: 0.45rem 0.75rem 0.65rem;
+  min-height: 0;
+}
 
   .markdown-editor {
     width: 100%;
-    min-height: 120px;
-    padding: 0.75rem;
+    min-height: 48px;
+    padding: 0.6rem 0.7rem;
     border: 1px solid #e8e8e8;
     border-radius: 6px;
     resize: vertical;
     overflow: auto;
     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-    font-size: 0.9375rem;
-    line-height: 1.6;
+    font-size: 0.9rem;
+    line-height: 1.5;
     color: #1a1a1a;
     background-color: #fafafa;
     transition: all 0.15s ease;
@@ -405,16 +450,16 @@
   .markdown-wrapper {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 0.75rem;
+    gap: 0.6rem;
   }
 
   .markdown-preview {
     border: 1px solid #e8e8e8;
     border-radius: 6px;
-    padding: 0.75rem;
+    padding: 0.6rem 0.7rem;
     background: #ffffff;
     color: #1a1a1a;
-    min-height: 80px;
+    min-height: 0;
     max-height: 600px;
     overflow: auto;
   }
@@ -422,7 +467,7 @@
   .markdown-preview.rendered {
     cursor: pointer;
     border: none;
-    padding: 1rem;
+    padding: 0.75rem;
     min-height: auto;
     max-height: none;
     background: transparent;

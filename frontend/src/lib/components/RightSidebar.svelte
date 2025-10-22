@@ -99,12 +99,12 @@
   }
 
   .sidebar-content {
-    padding: 1.25rem;
+    padding: 1rem;
     overflow-y: auto;
   }
 
   .info-section {
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
   }
 
   .info-label {
@@ -124,32 +124,32 @@
   .divider {
     height: 1px;
     background-color: #e8e8e8;
-    margin: 1.5rem 0;
+    margin: 1.1rem 0;
   }
 
   .shortcuts-section {
-    margin-top: 1.5rem;
+    margin-top: 1.25rem;
   }
 
   .section-title {
-    font-size: 0.875rem;
+    font-size: 0.85rem;
     font-weight: 600;
     color: #1a1a1a;
-    margin: 0 0 1rem 0;
+    margin: 0 0 0.75rem 0;
   }
 
   .shortcut-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
   }
 
   .shortcut-key {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     color: #6b6b6b;
-    background-color: #f5f5f5;
-    padding: 0.25rem 0.5rem;
+    background-color: #f7f7f7;
+    padding: 0.2rem 0.45rem;
     border-radius: 4px;
     border: 1px solid #e0e0e0;
     font-family: monospace;

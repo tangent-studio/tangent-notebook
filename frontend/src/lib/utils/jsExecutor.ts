@@ -10,8 +10,8 @@
  *   avoid syntax errors (import declarations only valid at module top-level),
  *   while allowing top-level await within regular cells.
  * - Capture console output and collect DOM outputs appended to a temporary output div.
- * - Heuristically expose top-level `const|let|var name = ...` as `window.name = ...`
- *   so subsequent cells can access the same objects.
+ * - Preserve last-expression display without mutating the global scope unless the
+ *   executed code does so explicitly.
  * - Avoid printing huge structures when the last line is an assignment to `window`/`globalThis`.
  *
  * Note: This file intentionally uses pragmatic, regex-based heuristics for the notebook use-case.
@@ -92,24 +92,34 @@ export class JavaScriptExecutor {
       console.warn = captureWarn;
 
       try {
-        // Split into lines, detect simple top-level declarations and promote them to window.<name>
         const lines = code.split("\n");
 
-        // Collect declared top-level simple identifiers (heuristic)
-        const declaredNames: string[] = [];
-        const varDeclRegex =
-          /(^|\n)\s*(?:const|let|var)\s+([A-Za-z_$][\w$]*)(?:\s*=)?/g;
-        let varMatch: RegExpExecArray | null;
-        while ((varMatch = varDeclRegex.exec(code)) !== null) {
-          declaredNames.push(varMatch[2]);
-        }
+        const stripLeadingComments = (input: string): string => {
+          let prev = input;
+          let curr = input;
+          const leadingCommentRegex = /^\s*(?:\/\/[^\n]*\n|\/\*[\s\S]*?\*\/)/;
+          do {
+            prev = curr;
+            curr = curr.replace(leadingCommentRegex, "");
+          } while (curr !== prev);
+          return curr.trimStart();
+        };
 
-        // Transform top-level declarations into window.<name> = ...
-        const transformed = code.replace(
-          /(^|\n)\s*(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=/g,
-          (_, p1, p2) => `${p1}window.${p2} = `,
-        );
-        const transformedLines = transformed.split("\n");
+        const stripTrailingComments = (input: string): string => {
+          let prev = input;
+          let curr = input;
+          const trailingCommentRegex = /(?:\/\/[^\n]*$|\/\*[\s\S]*?\*\/\s*)$/m;
+          do {
+            prev = curr;
+            curr = curr.replace(trailingCommentRegex, "");
+          } while (curr !== prev);
+          return curr.trimEnd();
+        };
+
+        const codeNoLeading = stripLeadingComments(code);
+        const codeNormalized = stripTrailingComments(codeNoLeading);
+
+        const isAsyncIIFE = /^\(\s*async\s*\(\)\s*=>/.test(codeNormalized) && /\)\s*\(\s*\)\s*;?$/.test(codeNormalized);
 
         // Detect if last line is a simple expression we should display
         const rawLastLine = lines[lines.length - 1]?.trim() ?? "";
@@ -124,51 +134,24 @@ export class JavaScriptExecutor {
           // avoid plain assignments (a = b, obj.prop = ...)
           !/^[\s\S]*=[^=][\s\S]*$/.test(lastNoSemi);
 
-        let execBody = transformed;
-        if (isLikelyExpression) {
-          const transformedBefore = transformedLines.slice(0, -1).join("\n");
-          const identMatch = /^[A-Za-z_$][\w$]*$/.test(lastNoSemi)
-            ? lastNoSemi
-            : null;
-
-          if (identMatch && declaredNames.includes(identMatch)) {
-            // if the last expression is a promoted identifier, read the window-backed value
-            execBody = transformedBefore.trim()
-              ? `${transformedBefore}\nwindow.__tangent_last = window.${identMatch};`
-              : `window.__tangent_last = window.${identMatch};`;
-          } else {
-            // evaluate the expression and store in __tangent_last
-            execBody = transformedBefore.trim()
-              ? `${transformedBefore}\nwindow.__tangent_last = (${lastNoSemi});`
-              : `window.__tangent_last = (${lastNoSemi});`;
+        let execBody = code;
+        if (isLikelyExpression && !isAsyncIIFE) {
+          const capture = this.extractLastExpression(code);
+          if (capture) {
+            const { before, expression } = capture;
+            const needsNewline = before.length > 0 && !before.endsWith("\n");
+            const prefix = needsNewline ? `${before}\n` : before;
+            execBody = prefix
+              ? `${prefix}window.__tangent_last = (${expression});`
+              : `window.__tangent_last = (${expression});`;
           }
         } else {
-          // Not an expression — do nothing special, run transformed code as-is.
+          // Not an expression — run the original code as-is.
           // This covers declarations, assignments, etc.
-          execBody = transformed;
+          execBody = code;
         }
 
-        // Export any top-level function/class declarations to window so later cells can use them
-        const funcNames: string[] = [];
-        const funcRegex = /(^|\n)\s*function\s+([A-Za-z_$][\w$]*)\s*\(/g;
-        let fm: RegExpExecArray | null;
-        while ((fm = funcRegex.exec(code)) !== null) {
-          funcNames.push(fm[2]);
-        }
-        const classNames: string[] = [];
-        const classRegex = /(^|\n)\s*class\s+([A-Za-z_$][\w$]*)\s*/g;
-        let cm: RegExpExecArray | null;
-        while ((cm = classRegex.exec(code)) !== null) {
-          classNames.push(cm[2]);
-        }
-        if (funcNames.length || classNames.length) {
-          const exports = [...funcNames, ...classNames]
-            .map((n) => `window.${n} = ${n};`)
-            .join("\n");
-          execBody = `${execBody}\n${exports}`;
-        }
-
-        // Execute in global scope using indirect eval so window assignments persist.
+        // Execute in global scope using indirect eval so top-level await remains supported.
         const globalEval = (0, eval) as (s: string) => any;
         const wrapped = `(async () => {\n${execBody}\n})()`;
         const result = globalEval(wrapped);
@@ -270,8 +253,8 @@ export class JavaScriptExecutor {
    * Execute code as an ES module. Supports static imports and top-level await.
    * Strategy:
    * - Parse import statements (simple regex) and dynamic-import those modules via CDN if needed.
-   * - Remove import lines and execute the remaining code inside an async IIFE via indirect eval
-   *   after transforming top-level declarations into window.* assignments so they persist.
+   * - Remove import lines and execute the remaining code inside an async IIFE via indirect eval,
+   *   leaving scope management to the executed code.
    * - Capture a final expression similarly to executeCode by writing into window.__tangent_last.
    */
   async executeModule(code: string): Promise<CellOutput> {
@@ -335,21 +318,6 @@ export class JavaScriptExecutor {
         };
       }
 
-      // Find declared top-level vars to bind after execution
-      const declaredVars: string[] = [];
-      const varDeclRegex =
-        /(^|\n)\s*(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=/g;
-      let vm: RegExpExecArray | null;
-      while ((vm = varDeclRegex.exec(codeWithoutImports)) !== null) {
-        declaredVars.push(vm[2]);
-      }
-
-      // Transform top-level declarations into window.<name> = ...
-      const transformed = codeWithoutImports.replace(
-        /(^|\n)\s*(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=/gm,
-        (_, p1, p2) => `${p1}window.${p2} = `,
-      );
-
       // Determine if last line is an expression we should capture
       const lines = codeWithoutImports.split("\n");
       const rawLast = lines[lines.length - 1]?.trim() ?? "";
@@ -364,39 +332,25 @@ export class JavaScriptExecutor {
 
       let funcBody: string;
       if (isLastExpr) {
-        const identMatch = /^[A-Za-z_$][\w$]*$/.test(lastNoSemi)
-          ? lastNoSemi
-          : null;
-        if (identMatch && declaredVars.includes(identMatch)) {
-          const transformedBeforeLast = transformed.split("\n").slice(0, -1)
-            .join("\n");
-          funcBody =
-            `${transformedBeforeLast}\nwindow.__tangent_last = window.${identMatch};`;
+        const capture = this.extractLastExpression(codeWithoutImports);
+        if (capture) {
+          const { before, expression } = capture;
+          const needsNewline = before.length > 0 && !before.endsWith("\n");
+          const prefix = needsNewline ? `${before}\n` : before;
+          funcBody = prefix
+            ? `${prefix}window.__tangent_last = (${expression});`
+            : `window.__tangent_last = (${expression});`;
         } else {
-          const transformedBeforeLast = transformed.split("\n").slice(0, -1)
-            .join("\n");
-          funcBody =
-            `${transformedBeforeLast}\nwindow.__tangent_last = (${lastNoSemi});`;
+          funcBody = codeWithoutImports;
         }
       } else {
-        funcBody = transformed;
+        funcBody = codeWithoutImports;
       }
 
-      // Execute the code inside an async IIFE in global scope so window assignments persist
+      // Execute the code inside an async IIFE in global scope to support top-level await
       const asyncIIFE = `(async () => {\n${funcBody}\n})()`;
       const globalEval = (0, eval) as (s: string) => any;
       await globalEval(asyncIIFE);
-
-      // Create bare var bindings for declared vars so subsequent cells can reference them by name
-      if (declaredVars.length > 0) {
-        const bindCode = declaredVars.map((n) => `var ${n} = window.${n};`)
-          .join("\n");
-        try {
-          globalEval(bindCode);
-        } catch {
-          // ignore
-        }
-      }
 
       // Return last captured value if present
       const last = (window as any).__tangent_last;
@@ -433,6 +387,83 @@ export class JavaScriptExecutor {
         timestamp: Date.now(),
       };
     }
+  }
+
+  private extractLastExpression(code: string): {
+    before: string;
+    expression: string;
+  } | null {
+    if (!code) return null;
+
+    let end = code.length;
+    while (end > 0 && /\s/.test(code.charAt(end - 1))) {
+      end--;
+    }
+
+    while (end > 0 && code.charAt(end - 1) === ";") {
+      end--;
+      while (end > 0 && /\s/.test(code.charAt(end - 1))) {
+        end--;
+      }
+    }
+
+    if (end <= 0) return null;
+
+    const relevant = code.slice(0, end);
+    let depth = 0;
+    let inString: string | null = null;
+    let escaped = false;
+
+    for (let i = end - 1; i >= 0; i--) {
+      const ch = relevant.charAt(i);
+
+      if (inString) {
+        if (escaped) {
+          escaped = false;
+          continue;
+        }
+        if (ch === "\\") {
+          escaped = true;
+          continue;
+        }
+        if (ch === inString) {
+          inString = null;
+        }
+        continue;
+      }
+
+      if (ch === "'" || ch === '"') {
+        inString = ch;
+        continue;
+      }
+
+      if (ch === "`") {
+        // template literals add significant parsing complexity; bail out gracefully
+        return null;
+      }
+
+      if (ch === ")" || ch === "]" || ch === "}") {
+        depth++;
+        continue;
+      }
+
+      if ((ch === "(" || ch === "[" || ch === "{") && depth > 0) {
+        depth--;
+        continue;
+      }
+
+      if (depth === 0 && (ch === ";" || ch === "\n" || ch === "\r")) {
+        const start = i + 1;
+        const expression = relevant.slice(start);
+        if (!expression.trim()) return null;
+        const before = relevant.slice(0, start);
+        return { before, expression };
+      }
+    }
+
+    const expression = relevant;
+    if (!expression.trim()) return null;
+    return { before: "", expression };
   }
 
   // Small helper to format values for display. Avoids dumping extremely large arrays fully.

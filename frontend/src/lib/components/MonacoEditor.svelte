@@ -14,7 +14,18 @@
   let container: HTMLDivElement;
   let editor: any;
   let monacoLib: any;
-  let editorHeight = '200px';
+  let editorHeight = '120px';
+  let focusDisposable: { dispose: () => void } | null = null;
+  let blurDisposable: { dispose: () => void } | null = null;
+  let removePointerListener: (() => void) | null = null;
+  let contentSizeDisposable: { dispose: () => void } | null = null;
+  const MIN_HEIGHT = 40;
+  const MAX_HEIGHT = 700;
+
+  function applyEditorHeight(px: number) {
+    const clamped = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, Math.round(px)));
+    editorHeight = `${clamped}px`;
+  }
 
   function patchCaretRangeFallback(doc: Document | null | undefined) {
     if (!doc) return;
@@ -57,28 +68,6 @@
       }
       return null;
     };
-  }
-
-  // Calculate height based on content
-  function calculateHeight(lineCount: number): string {
-    const minLines = 5;
-    const maxLines = 30;
-    const lineHeight = 19; // Monaco default line height
-    const padding = 20; // Top and bottom padding
-
-    const lines = Math.max(minLines, Math.min(maxLines, lineCount));
-    return `${lines * lineHeight + padding}px`;
-  }
-
-  // Update height based on content
-  function updateEditorHeight() {
-    if (!editor) return;
-
-    const model = editor.getModel();
-    if (!model) return;
-
-    const lineCount = model.getLineCount();
-    editorHeight = calculateHeight(lineCount);
   }
 
   $: computedHeight = height === 'auto' ? editorHeight : height;
@@ -228,13 +217,22 @@
 
         // Update height based on content
         if (height === 'auto') {
-          updateEditorHeight();
+          applyEditorHeight(editor.getContentHeight());
+          editor.layout();
+        }
+      });
+
+      contentSizeDisposable = editor.onDidContentSizeChange((e: any) => {
+        if (height === 'auto') {
+          applyEditorHeight(e.contentHeight);
+          editor.layout();
         }
       });
 
       // Initial height calculation
       if (height === 'auto') {
-        updateEditorHeight();
+        applyEditorHeight(editor.getContentHeight());
+        editor.layout();
       }
 
       // Add a DOM-level keydown listener in capture phase to ensure shortcuts
@@ -256,6 +254,39 @@
 
       // Use capture so we see events before Monaco may stop propagation
       container.addEventListener('keydown', domKeyHandler, true);
+
+      const forwardFocus = () => {
+        dispatch('editorFocus');
+        dispatch('focus');
+      };
+      try {
+        focusDisposable = editor.onDidFocusEditorWidget(forwardFocus);
+        blurDisposable = editor.onDidBlurEditorWidget(() => {
+          dispatch('editorBlur');
+          dispatch('blur');
+        });
+      } catch {
+        focusDisposable = null;
+        blurDisposable = null;
+      }
+
+      const pointerHandler = () => {
+        try {
+          editor?.focus();
+        } catch {
+          // best-effort focus
+        }
+        forwardFocus();
+      };
+      const pointerOptions: AddEventListenerOptions = { capture: true };
+      container.addEventListener('pointerdown', pointerHandler, pointerOptions);
+      removePointerListener = () => {
+        try {
+          container.removeEventListener('pointerdown', pointerHandler, pointerOptions);
+        } catch {
+          // ignore cleanup failure
+        }
+      };
 
       // Add AI code completion shortcuts
       editor.addCommand(monacoLib.KeyMod.CtrlCmd | monacoLib.KeyCode.Space, () => {
@@ -375,13 +406,28 @@
     if (editor) {
       editor.dispose();
     }
+    try {
+      focusDisposable?.dispose();
+    } catch {}
+    try {
+      blurDisposable?.dispose();
+    } catch {}
+    try {
+      removePointerListener?.();
+    } catch {}
+    try {
+      contentSizeDisposable?.dispose();
+    } catch {}
   });
 
   // Update editor value when prop changes
   $: if (editor && value !== editor.getValue()) {
     editor.setValue(value);
     if (height === 'auto') {
-      setTimeout(() => updateEditorHeight(), 0);
+      setTimeout(() => {
+        applyEditorHeight(editor.getContentHeight());
+        editor.layout();
+      }, 0);
     }
   }
 
@@ -415,10 +461,9 @@
   .monaco-editor-container {
     border: 1px solid #e5e7eb;
     border-radius: 0.375rem;
-    min-height: 115px;
-    transition: height 0.2s ease;
+    min-height: 40px;
+    transition: height 0.1s ease;
   }
-
   :global(.monaco-editor) {
     border-radius: 0.375rem;
   }
