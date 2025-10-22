@@ -160,6 +160,37 @@
     selectedCellId.set(cellId);
   }
 
+  const UNTITLED = 'Untitled Notebook';
+
+  function updateNotebookTitle(newTitle: string) {
+    const title = newTitle.trim() || UNTITLED;
+    currentNotebook.update((notebook) => {
+      if (!notebook) return notebook;
+      return {
+        ...notebook,
+        name: title,
+        updatedAt: new Date().toISOString()
+      };
+    });
+  }
+
+  function handleTitleBlur(event: FocusEvent) {
+    const target = event.currentTarget as HTMLElement | null;
+    if (!target) return;
+    const raw = target.innerText.replace(/\s+/g, ' ');
+    const sanitized = raw.trim() || UNTITLED;
+    target.textContent = sanitized;
+    updateNotebookTitle(sanitized);
+  }
+
+  function handleTitleKeydown(event: KeyboardEvent) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const target = event.currentTarget as HTMLElement | null;
+      target?.blur();
+    }
+  }
+
 
   
   function handleAddCell(event: CustomEvent) {
@@ -281,7 +312,16 @@
   {#if $currentNotebook}
     <!-- Observable-style header without breadcrumb -->
     <div class="notebook-header">
-      <h1 class="notebook-title" data-testid="notebook-title">
+      <h1
+        class="notebook-title"
+        contenteditable="true"
+        spellcheck="false"
+        role="textbox"
+        aria-label="Notebook title"
+        data-testid="notebook-title"
+        on:keydown={handleTitleKeydown}
+        on:blur={handleTitleBlur}
+      >
         {$currentNotebook.name}
       </h1>
     </div>

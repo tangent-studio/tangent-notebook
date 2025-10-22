@@ -13,20 +13,38 @@
     window.dispatchEvent(new CustomEvent('run-all-cells'));
   }
 
-  function parseJSNotebook(text) {
+  function parseJSNotebook(text, filename = 'notebook.js') {
     const lines = text.split('\n');
-    let metadata = {};
-    let cells = [];
-    let currentCell = null;
+    const metadata: Record<string, string> = {};
+    const cells: any[] = [];
+    let currentCell: any = null;
     let inMetadata = false;
     let inMarkdown = false;
     let markdownContent = '';
     let codeContent = '';
 
+    const slugify = (value: string): string =>
+      value
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .trim();
+
+    const deriveDefaultName = () => {
+      if (!filename) return '';
+      const base = filename.replace(/\.[^.]+$/, '');
+      const spaced = base.replace(/[-_]+/g, ' ').trim();
+      return spaced ? spaced.charAt(0).toUpperCase() + spaced.slice(1) : '';
+    };
+
+    const defaultName = deriveDefaultName();
+
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
+      const trimmed = line.trim();
+      const withoutComment = trimmed.replace(/^\/\/\s*/, '');
 
-      if (line.trim() === '---') {
+      if (withoutComment === '---') {
         if (!inMetadata) {
           inMetadata = true;
         } else {
@@ -36,9 +54,9 @@
       }
 
       if (inMetadata) {
-        const match = line.match(/^(\w+):\s*(.+)$/);
+        const match = withoutComment.match(/^([\w-]+):\s*(.+)$/);
         if (match) {
-          metadata[match[1]] = match[2];
+          metadata[match[1]] = match[2].trim();
         }
         continue;
       }
@@ -95,9 +113,16 @@
       cells.push(currentCell);
     }
 
+    const notebookName =
+      (metadata.title && metadata.title.length > 0 ? metadata.title : defaultName) ||
+      'Sample Notebook';
+    const notebookId =
+      (metadata.id && metadata.id.length > 0 ? metadata.id : slugify(notebookName)) ||
+      `notebook-${Date.now()}`;
+
     return {
-      id: metadata.id || 'sample-notebook-js',
-      name: metadata.title || 'Sample Notebook',
+      id: notebookId,
+      name: notebookName,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       cells,
@@ -111,7 +136,7 @@
         const res = await fetch('/sample-notebooks/Data-Visualization-with-D3-and-Observable-Plot.js');
         if (res.ok) {
           const text = await res.text();
-          const sample = parseJSNotebook(text);
+          const sample = parseJSNotebook(text, 'Data-Visualization-with-D3-and-Observable-Plot.js');
           currentNotebook.set(sample);
         } else {
           const newNotebook = createNewNotebook();
@@ -143,14 +168,20 @@
     // Create a file input element
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.json';
+    input.accept = '.json,.js';
     input.onchange = async (e: Event) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
 
       try {
         const text = await file.text();
-        const notebook = JSON.parse(text);
+        let notebook;
+
+        if (file.name.toLowerCase().endsWith('.js')) {
+          notebook = parseJSNotebook(text, file.name);
+        } else {
+          notebook = JSON.parse(text);
+        }
 
         // Validate that it's a valid notebook
         if (!notebook.id || !notebook.cells || !Array.isArray(notebook.cells)) {
