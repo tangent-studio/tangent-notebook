@@ -16,6 +16,49 @@
   let monacoLib: any;
   let editorHeight = '200px';
 
+  function patchCaretRangeFallback(doc: Document | null | undefined) {
+    if (!doc) return;
+    const anyDoc = doc as any;
+    if (anyDoc.__tangentPatchedCaretRange) return;
+
+    const originalCaretRange = typeof anyDoc.caretRangeFromPoint === 'function'
+      ? anyDoc.caretRangeFromPoint.bind(doc)
+      : null;
+    const originalCaretPosition = typeof anyDoc.caretPositionFromPoint === 'function'
+      ? anyDoc.caretPositionFromPoint.bind(doc)
+      : null;
+
+    if (!originalCaretRange && !originalCaretPosition) return;
+
+    anyDoc.__tangentPatchedCaretRange = true;
+    anyDoc.caretRangeFromPoint = (x: number, y: number) => {
+      try {
+        if (originalCaretRange) {
+          const range = originalCaretRange(x, y);
+          if (range) return range;
+        }
+        if (originalCaretPosition) {
+          const pos = originalCaretPosition(x, y);
+          if (pos && pos.offsetNode) {
+            const synthetic = doc.createRange();
+            synthetic.setStart(pos.offsetNode, pos.offset ?? 0);
+            synthetic.collapse(true);
+            return synthetic;
+          }
+        }
+        if (doc.body) {
+          const synthetic = doc.createRange();
+          synthetic.setStart(doc.body, 0);
+          synthetic.collapse(true);
+          return synthetic;
+        }
+      } catch {
+        // ignore and fall through
+      }
+      return null;
+    };
+  }
+
   // Calculate height based on content
   function calculateHeight(lineCount: number): string {
     const minLines = 5;
@@ -44,6 +87,43 @@
     // Initialize Monaco via loader which configures workers correctly for bundlers like Vite
     monacoLib = await loader.init();
 
+    patchCaretRangeFallback(container?.ownerDocument ?? document);
+
+    // Helper: wait until the editor container is actually visible in layout.
+    // Monaco's hit-testing can fail with null nodes when created in hidden/offscreen containers
+    // (for example inside a collapsed sidebar). We poll via requestAnimationFrame until the
+    // container has a non-zero layout rect and is connected.
+    async function waitForContainerVisible(el: HTMLElement | undefined | null, timeout = 3000) {
+      if (!el) return;
+      const start = performance.now();
+      return new Promise<void>((resolve) => {
+        const check = () => {
+          try {
+            if (
+              el &&
+              el.isConnected &&
+              el.offsetParent !== null &&
+              el.getBoundingClientRect &&
+              el.getBoundingClientRect().width > 0 &&
+              el.getBoundingClientRect().height > 0
+            ) {
+              resolve();
+              return;
+            }
+            if (performance.now() - start > timeout) {
+              // timeout: resolve anyway to avoid blocking; Monaco will still attempt to create
+              resolve();
+              return;
+            }
+          } catch {
+            // ignore exceptions and retry
+          }
+          requestAnimationFrame(check);
+        };
+        check();
+      });
+    }
+
     // Configure Monaco Editor
     if (monacoLib.languages && monacoLib.languages.typescript) {
       monacoLib.languages.typescript.javascriptDefaults.setCompilerOptions({
@@ -71,97 +151,132 @@
       `, 'global.d.ts');
     }
 
-    // Create editor
-    editor = monacoLib.editor.create(container, {
-      value,
-      language,
-      theme,
-      readOnly,
-      minimap: { enabled: false },
-      scrollBeyondLastLine: false,
-      wordWrap: 'on',
-      lineNumbers: 'on',
-      glyphMargin: false,
-      folding: false,
-      lineDecorationsWidth: 0,
-      lineNumbersMinChars: 4,
-      automaticLayout: true,
-      fontSize: 12,
-      fontFamily: '"Fira Code", Monaco, Menlo, "Ubuntu Mono", monospace',
-      tabSize: 2,
-      insertSpaces: true,
-      contextmenu: true,
-      quickSuggestions: true,
-      suggestOnTriggerCharacters: true,
-      acceptSuggestionOnEnter: 'on',
-      acceptSuggestionOnCommitCharacter: true,
-      snippetSuggestions: 'top',
-      scrollbar: {
-        vertical: 'auto',
-        horizontal: 'auto',
-        useShadows: false,
-        verticalScrollbarSize: 10,
-        horizontalScrollbarSize: 10
-      },
-      padding: {
-        top: 8,
-        bottom: 8
-      }
-    });
+    // Wait for the container to be laid out to reduce chance of hitTest null errors
+    await waitForContainerVisible(container);
 
-    // Update height on content change
-    editor.onDidChangeModelContent(() => {
-      const newValue = editor.getValue();
-      if (newValue !== value) {
-        value = newValue;
-        dispatch('change', { value: newValue });
+    // Create editor (guard with try/catch to log unexpected failures)
+    try {
+      editor = monacoLib.editor.create(container, {
+        value,
+        language,
+        theme,
+        readOnly,
+        minimap: { enabled: false },
+        scrollBeyondLastLine: false,
+        wordWrap: 'on',
+        lineNumbers: 'on',
+        glyphMargin: false,
+        folding: false,
+        lineDecorationsWidth: 0,
+        lineNumbersMinChars: 4,
+        automaticLayout: true,
+        fontSize: 12,
+        fontFamily: '"Fira Code", Monaco, Menlo, "Ubuntu Mono", monospace',
+        tabSize: 2,
+        insertSpaces: true,
+        contextmenu: true,
+        quickSuggestions: true,
+        suggestOnTriggerCharacters: true,
+        acceptSuggestionOnEnter: 'on',
+        acceptSuggestionOnCommitCharacter: true,
+        snippetSuggestions: 'top',
+        scrollbar: {
+          vertical: 'auto',
+          horizontal: 'auto',
+          useShadows: false,
+          verticalScrollbarSize: 10,
+          horizontalScrollbarSize: 10,
+          alwaysConsumeMouseWheel: false
+        },
+        padding: {
+          top: 8,
+          bottom: 8
+        }
+      });
+
+      // Ensure layout is correct immediately after creation and when the container resizes
+      try {
+        // small defer to let layout settle
+        setTimeout(() => {
+          try { editor.layout(); } catch {}
+        }, 0);
+
+        // Use a ResizeObserver on the container to trigger layout when size changes
+        if (typeof ResizeObserver !== 'undefined') {
+          const ro = new ResizeObserver(() => {
+            try { editor.layout(); } catch {}
+          });
+          ro.observe(container);
+        } else {
+          // Fallback to window resize event
+          const onWinResize = () => {
+            try { editor.layout(); } catch {}
+          };
+          window.addEventListener('resize', onWinResize);
+        }
+      } catch (e) {
+        // no-op if layout helpers fail
       }
 
-      // Update height based on content
+      // Update height on content change
+      editor.onDidChangeModelContent(() => {
+        const newValue = editor.getValue();
+        if (newValue !== value) {
+          value = newValue;
+          dispatch('change', { value: newValue });
+        }
+
+        // Update height based on content
+        if (height === 'auto') {
+          updateEditorHeight();
+        }
+      });
+
+      // Initial height calculation
       if (height === 'auto') {
         updateEditorHeight();
       }
-    });
 
-    // Initial height calculation
-    if (height === 'auto') {
-      updateEditorHeight();
+      // Add a DOM-level keydown listener in capture phase to ensure shortcuts
+      // are handled even when Monaco internals consume events.
+      const domKeyHandler = (e: KeyboardEvent) => {
+        // Shift+Enter: Run and move to next cell
+        if (e.shiftKey && e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          e.stopPropagation();
+          dispatch('runAndAdvance');
+        }
+        // Ctrl/Cmd+Enter: Just run the cell
+        else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          e.stopPropagation();
+          dispatch('run');
+        }
+      };
+
+      // Use capture so we see events before Monaco may stop propagation
+      container.addEventListener('keydown', domKeyHandler, true);
+
+      // Add AI code completion shortcuts
+      editor.addCommand(monacoLib.KeyMod.CtrlCmd | monacoLib.KeyCode.Space, () => {
+        triggerAICompletion();
+      });
+
+      editor.addCommand(monacoLib.KeyMod.CtrlCmd | monacoLib.KeyMod.Shift | monacoLib.KeyCode.KeyG, () => {
+        triggerAIGeneration();
+      });
+
+      // Register AI completion provider
+      registerAICompletionProvider();
+
+      // Focus the editor
+      try { editor.focus(); } catch {}
+    } catch (err) {
+      // If editor creation fails, surface a console warning but do not crash the app.
+      try {
+        console.warn('Monaco editor creation failed:', err);
+      } catch {}
     }
-
-    // Add a DOM-level keydown listener in capture phase to ensure shortcuts
-    // are handled even when Monaco internals consume events.
-    const domKeyHandler = (e: KeyboardEvent) => {
-      // Shift+Enter: Run and move to next cell
-      if (e.shiftKey && e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
-        e.preventDefault();
-        e.stopPropagation();
-        dispatch('runAndAdvance');
-      }
-      // Ctrl/Cmd+Enter: Just run the cell
-      else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        e.stopPropagation();
-        dispatch('run');
-      }
-    };
-
-    // Use capture so we see events before Monaco may stop propagation
-    container.addEventListener('keydown', domKeyHandler, true);
-
-    // Add AI code completion shortcuts
-    editor.addCommand(monacoLib.KeyMod.CtrlCmd | monacoLib.KeyCode.Space, () => {
-      triggerAICompletion();
-    });
-
-    editor.addCommand(monacoLib.KeyMod.CtrlCmd | monacoLib.KeyMod.Shift | monacoLib.KeyCode.KeyG, () => {
-      triggerAIGeneration();
-    });
-
-    // Register AI completion provider
-    registerAICompletionProvider();
-
-    // Focus the editor
-    editor.focus();
   });
 
   // AI completion functions
@@ -294,7 +409,7 @@
   }
 </script>
 
-<div bind:this={container} class="monaco-editor-container" style="height: {computedHeight}; width: 100%;"></div>
+<div bind:this={container} class="monaco-editor-container" tabindex="0" role="textbox" style="height: {computedHeight}; width: 100%;"></div>
 
 <style>
   .monaco-editor-container {

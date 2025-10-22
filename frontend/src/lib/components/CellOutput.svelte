@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { CellOutput } from '../types/notebook';
+  import JSONFormatter from 'json-formatter-js';
 
   export let output: CellOutput;
 
@@ -37,6 +38,61 @@
       }
     };
   }
+
+  // Render collapsible JSON using json-formatter-js
+  function renderJson(node: HTMLElement, value: string | object | null | undefined) {
+    let formatterEl: HTMLElement | null = null;
+
+    const render = (next: typeof value) => {
+      node.innerHTML = '';
+      formatterEl = null;
+
+      if (next === undefined || next === null) {
+        return;
+      }
+
+      let parsed: any = next;
+      if (typeof next === 'string') {
+        try {
+          parsed = JSON.parse(next);
+        } catch {
+          parsed = null;
+        }
+      }
+
+      if (parsed !== null) {
+        try {
+          const formatter = new JSONFormatter(parsed, 1, {
+            hoverPreviewEnabled: true
+          });
+          formatterEl = formatter.render();
+          node.appendChild(formatterEl);
+          return;
+        } catch {
+          formatterEl = null;
+        }
+      }
+
+      const pre = document.createElement('pre');
+      pre.className = 'json-output';
+      pre.textContent = typeof next === 'string'
+        ? formatJSON(next)
+        : JSON.stringify(next, null, 2);
+      node.appendChild(pre);
+    };
+
+    render(value);
+
+    return {
+      update(next: typeof value) {
+        render(next);
+      },
+      destroy() {
+        node.innerHTML = '';
+        formatterEl = null;
+      }
+    };
+  }
 </script>
 
 <div class="output-container" data-testid="cell-output">
@@ -48,7 +104,7 @@
         {@html output.content}
       </div>
     {:else if output.type === 'json' || isValidJSON(String(output.content))}
-      <pre class="json-output"><code>{formatJSON(String(output.content))}</code></pre>
+      <div class="json-tree" use:renderJson={output.content}></div>
     {:else if output.type === 'error'}
       <div class="error-output">
         <div class="error-header">
@@ -109,6 +165,60 @@
 
   .json-output {
     color: #7c3aed;
+  }
+
+  .json-tree {
+    font-size: 0.875rem;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    background-color: #fafafa;
+    border-radius: 6px;
+    border: 1px solid #e8e8e8;
+    padding: 0.5rem 0.75rem;
+    overflow-x: auto;
+  }
+
+  .json-tree :global(.json-formatter-row) {
+    font-family: inherit;
+    line-height: 1.4;
+  }
+
+  .json-tree :global(.json-formatter-row .json-formatter-toggler) {
+    cursor: pointer;
+    display: inline-block;
+    user-select: none;
+  }
+
+  .json-tree :global(.json-formatter-row .json-formatter-toggler:before) {
+    content: "▸";
+    display: inline-block;
+    transform: rotate(0deg);
+    transition: transform 0.1s ease;
+    margin-right: 4px;
+  }
+
+  .json-tree :global(.json-formatter-row.json-formatter-open .json-formatter-toggler:before) {
+    transform: rotate(90deg);
+  }
+
+  .json-tree :global(.json-formatter-row > a.json-formatter-key) {
+    color: #2563eb;
+    text-decoration: none;
+  }
+
+  .json-tree :global(.json-formatter-row .json-formatter-number) {
+    color: #16a34a;
+  }
+
+  .json-tree :global(.json-formatter-row .json-formatter-string) {
+    color: #d97706;
+  }
+
+  .json-tree :global(.json-formatter-row .json-formatter-boolean) {
+    color: #9333ea;
+  }
+
+  .json-tree :global(.json-formatter-row .json-formatter-null) {
+    color: #6b7280;
   }
 
   .text-output {

@@ -281,13 +281,9 @@
   {#if $currentNotebook}
     <!-- Observable-style header without breadcrumb -->
     <div class="notebook-header">
-      <h1 class="notebook-title" contenteditable="true" data-testid="notebook-title">
+      <h1 class="notebook-title" data-testid="notebook-title">
         {$currentNotebook.name}
       </h1>
-
-      <div class="notebook-subtitle">
-        <span class="subtitle-text">Import any ESM package • Load CSV/JSON • Create visualizations</span>
-      </div>
     </div>
     
     <div class="cells-container">
@@ -355,18 +351,6 @@
     border-radius: 4px;
   }
 
-  .notebook-subtitle {
-    font-size: 1rem;
-    color: #6b6b6b;
-    margin-bottom: 0;
-    line-height: 1.5;
-  }
-
-  .subtitle-text {
-    color: #6b6b6b;
-    font-weight: 400;
-  }
-  
   .cells-container {
     margin-bottom: 2rem;
   }

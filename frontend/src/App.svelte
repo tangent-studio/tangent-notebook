@@ -13,13 +13,105 @@
     window.dispatchEvent(new CustomEvent('run-all-cells'));
   }
 
+  function parseJSNotebook(text) {
+    const lines = text.split('\n');
+    let metadata = {};
+    let cells = [];
+    let currentCell = null;
+    let inMetadata = false;
+    let inMarkdown = false;
+    let markdownContent = '';
+    let codeContent = '';
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+
+      if (line.trim() === '---') {
+        if (!inMetadata) {
+          inMetadata = true;
+        } else {
+          inMetadata = false;
+        }
+        continue;
+      }
+
+      if (inMetadata) {
+        const match = line.match(/^(\w+):\s*(.+)$/);
+        if (match) {
+          metadata[match[1]] = match[2];
+        }
+        continue;
+      }
+
+      if (line.startsWith('// %% ')) {
+        if (currentCell) {
+          if (currentCell.type === 'markdown') {
+            currentCell.content = markdownContent.trim();
+          } else if (currentCell.type === 'code') {
+            currentCell.content = codeContent.trim();
+          }
+          cells.push(currentCell);
+        }
+
+        const typeMatch = line.match(/\/\/ %% \[(\w+)\]/);
+        if (typeMatch) {
+          const type = typeMatch[1];
+          currentCell = {
+            id: `cell-${cells.length + 1}`,
+            type: type === 'javascript' ? 'code' : type,
+            content: '',
+            output: null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          inMarkdown = false;
+          markdownContent = '';
+          codeContent = '';
+        }
+        continue;
+      }
+
+      if (currentCell) {
+        if (currentCell.type === 'markdown') {
+          if (line.startsWith('/*')) {
+            inMarkdown = true;
+          } else if (line.startsWith('*/')) {
+            inMarkdown = false;
+          } else if (inMarkdown) {
+            markdownContent += line + '\n';
+          }
+        } else if (currentCell.type === 'code') {
+          codeContent += line + '\n';
+        }
+      }
+    }
+
+    if (currentCell) {
+      if (currentCell.type === 'markdown') {
+        currentCell.content = markdownContent.trim();
+      } else if (currentCell.type === 'code') {
+        currentCell.content = codeContent.trim();
+      }
+      cells.push(currentCell);
+    }
+
+    return {
+      id: metadata.id || 'sample-notebook-js',
+      name: metadata.title || 'Sample Notebook',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      cells,
+    };
+  }
+
   onMount(() => {
     // Try to load a sample notebook bundled with the frontend
     (async () => {
       try {
-        const res = await fetch('/sample-notebooks/plotting-demo.json');
+        const res = await fetch('/sample-notebooks/Data-Visualization-with-D3-and-Observable-Plot.js');
         if (res.ok) {
-          const sample = await res.json();
+          const text = await res.text();
+          const sample = parseJSNotebook(text);
           currentNotebook.set(sample);
         } else {
           const newNotebook = createNewNotebook();
