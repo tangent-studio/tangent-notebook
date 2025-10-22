@@ -6,14 +6,12 @@
 // %% [markdown]
 /*
 
-A lightweight JavaScript notebook combining **Arquero**, **Vega-Lite**, and **Observable Plot**.  
-This template sets up a consistent structure for reproducible data exploration and narrative analysis.
+This lightweight JavaScript notebook combines **Arquero** and **Observable Plot**. This template sets up a consistent structure for reproducible data exploration and narrative analysis.
 
 It uses public datasets:
 - Global temperature anomalies
 - Palmer Penguins morphology data
 
-Each section can evolve into a richer analysis cell.
 */
 
 // %% [javascript]
@@ -25,7 +23,6 @@ import * as Plot from "@observablehq/plot";
 ## Load datasets with Arquero
 
 Each dataset comes from `vega-datasets` CDN, providing canonical examples for timeseries, tabular, and categorical analysis. Arquero lets you load csv and json data sets. We first need to fetch the raw data from the URLs and then parse them into Arquero tables. Assign any tables you want to reuse to `globalThis` so later cells can opt into the shared state explicitly.
-
 
 */
 
