@@ -316,7 +316,6 @@
         class="notebook-title"
         contenteditable="true"
         spellcheck="false"
-        role="textbox"
         aria-label="Notebook title"
         data-testid="notebook-title"
         on:keydown={handleTitleKeydown}
