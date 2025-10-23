@@ -23,38 +23,44 @@
   const MAX_HEIGHT = 700;
   const HEIGHT_PADDING = 6;
 
+  function scheduleHeightSync(delays: number[] = [0, 80, 200, 400]) {
+    if (height !== 'auto') return;
+    delays.forEach((delay) => {
+      setTimeout(() => {
+        if (!editor) return;
+        try {
+          applyEditorHeight(calculatePreferredHeight());
+          editor.layout();
+        } catch {
+          // ignore measurement failures
+        }
+      }, delay);
+    });
+  }
+
   function calculatePreferredHeight(): number {
     try {
       if (!editor) return MIN_HEIGHT;
-      const contentHeight = editor.getContentHeight ? editor.getContentHeight() : 0;
-      let estimated = 0;
-      try {
-        const model = editor.getModel ? editor.getModel() : null;
-        const lineCount = model && typeof model.getLineCount === 'function'
-          ? Math.max(model.getLineCount(), 1)
-          : 1;
-        if (typeof editor.getTopForLineNumber === 'function') {
-          estimated = editor.getTopForLineNumber(lineCount + 1);
+      const model = editor.getModel ? editor.getModel() : null;
+      const lineCount = model && typeof model.getLineCount === 'function'
+        ? Math.max(model.getLineCount(), 1)
+        : 1;
+
+      let lineHeight = editor.getConfiguration?.().lineHeight;
+      if ((!lineHeight || !Number.isFinite(lineHeight)) && monacoLib?.editor?.EditorOption !== undefined) {
+        try {
+          const optionKey = monacoLib.editor.EditorOption.lineHeight;
+          lineHeight = editor.getOption?.(optionKey) || lineHeight;
+        } catch (_) {
+          /* ignore */
         }
-        if (!estimated || !Number.isFinite(estimated)) {
-          let lineHeight = editor.getConfiguration?.().lineHeight;
-          if (!lineHeight && monacoLib?.editor?.EditorOption !== undefined) {
-            try {
-              const optionKey = monacoLib.editor.EditorOption.lineHeight;
-              lineHeight = editor.getOption?.(optionKey) || lineHeight;
-            } catch (_) {
-              /* ignore */
-            }
-          }
-          if (!lineHeight || !Number.isFinite(lineHeight)) {
-            lineHeight = 20;
-          }
-          estimated = lineCount * lineHeight;
-        }
-      } catch (_) {
-        estimated = 0;
       }
-      return Math.max(contentHeight, estimated, MIN_HEIGHT);
+      if (!lineHeight || !Number.isFinite(lineHeight)) {
+        lineHeight = 20;
+      }
+
+      const estimated = (lineCount + 1) * lineHeight;
+      return Math.max(estimated, MIN_HEIGHT);
     } catch (_) {
       return MIN_HEIGHT;
     }
