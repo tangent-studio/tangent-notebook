@@ -14,16 +14,55 @@
   let container: HTMLDivElement;
   let editor: any;
   let monacoLib: any;
-  let editorHeight = '120px';
+  let editorHeight = '32px';
   let focusDisposable: { dispose: () => void } | null = null;
   let blurDisposable: { dispose: () => void } | null = null;
   let removePointerListener: (() => void) | null = null;
   let contentSizeDisposable: { dispose: () => void } | null = null;
-  const MIN_HEIGHT = 40;
+  const MIN_HEIGHT = 20;
   const MAX_HEIGHT = 700;
+  const HEIGHT_PADDING = 6;
+
+  function calculatePreferredHeight(): number {
+    try {
+      if (!editor) return MIN_HEIGHT;
+      const contentHeight = editor.getContentHeight ? editor.getContentHeight() : 0;
+      let estimated = 0;
+      try {
+        const model = editor.getModel ? editor.getModel() : null;
+        const lineCount = model && typeof model.getLineCount === 'function'
+          ? Math.max(model.getLineCount(), 1)
+          : 1;
+        if (typeof editor.getTopForLineNumber === 'function') {
+          estimated = editor.getTopForLineNumber(lineCount + 1);
+        }
+        if (!estimated || !Number.isFinite(estimated)) {
+          let lineHeight = editor.getConfiguration?.().lineHeight;
+          if (!lineHeight && monacoLib?.editor?.EditorOption !== undefined) {
+            try {
+              const optionKey = monacoLib.editor.EditorOption.lineHeight;
+              lineHeight = editor.getOption?.(optionKey) || lineHeight;
+            } catch (_) {
+              /* ignore */
+            }
+          }
+          if (!lineHeight || !Number.isFinite(lineHeight)) {
+            lineHeight = 20;
+          }
+          estimated = lineCount * lineHeight;
+        }
+      } catch (_) {
+        estimated = 0;
+      }
+      return Math.max(contentHeight, estimated, MIN_HEIGHT);
+    } catch (_) {
+      return MIN_HEIGHT;
+    }
+  }
 
   function applyEditorHeight(px: number) {
-    const clamped = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, Math.round(px)));
+    const padded = Math.max(0, px) + HEIGHT_PADDING;
+    const clamped = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, Math.round(padded)));
     editorHeight = `${clamped}px`;
   }
 
@@ -178,8 +217,8 @@
           alwaysConsumeMouseWheel: false
         },
         padding: {
-          top: 8,
-          bottom: 8
+          top: 4,
+          bottom: 4
         }
       });
 
@@ -216,23 +255,21 @@
         }
 
         // Update height based on content
-        if (height === 'auto') {
-          applyEditorHeight(editor.getContentHeight());
-          editor.layout();
-        }
+        if (height === 'auto') scheduleHeightSync([0, 80, 200]);
       });
 
       contentSizeDisposable = editor.onDidContentSizeChange((e: any) => {
-        if (height === 'auto') {
-          applyEditorHeight(e.contentHeight);
-          editor.layout();
-        }
+        if (height === 'auto') scheduleHeightSync([0, 120]);
       });
 
       // Initial height calculation
       if (height === 'auto') {
-        applyEditorHeight(editor.getContentHeight());
-        editor.layout();
+        const syncHeights = () => {
+          applyEditorHeight(calculatePreferredHeight());
+          editor.layout();
+        };
+        syncHeights();
+        [80, 200, 400].forEach(delay => setTimeout(syncHeights, delay));
       }
 
       // Add a DOM-level keydown listener in capture phase to ensure shortcuts
@@ -425,7 +462,7 @@
     editor.setValue(value);
     if (height === 'auto') {
       setTimeout(() => {
-        applyEditorHeight(editor.getContentHeight());
+        applyEditorHeight(calculatePreferredHeight());
         editor.layout();
       }, 0);
     }
@@ -461,7 +498,7 @@
   .monaco-editor-container {
     border: 1px solid #e5e7eb;
     border-radius: 0.375rem;
-    min-height: 40px;
+    min-height: 20px;
     transition: height 0.1s ease;
   }
   :global(.monaco-editor) {

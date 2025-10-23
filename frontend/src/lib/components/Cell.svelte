@@ -44,7 +44,11 @@
     dispatch('select', { cellId: cell.id });
   }
 
-  function handleCellMouseDown() {
+  function handleCellMouseDown(event: MouseEvent) {
+    const target = event.target as HTMLElement;
+    if (target && target.closest('.jmon-music-player-container')) {
+      return;
+    }
     dispatch('select', { cellId: cell.id });
     if (cell.type === 'code' && editorRef) {
       requestAnimationFrame(() => {
@@ -420,7 +424,7 @@
   }
 
 .cell-content {
-  padding: 0.45rem 0.75rem 0.65rem;
+  padding: 0.3rem 0.65rem 0.4rem;
   min-height: 0;
 }
 
