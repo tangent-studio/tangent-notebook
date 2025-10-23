@@ -22,24 +22,13 @@ import * as Plot from "@observablehq/plot";
 /*
 ## Load datasets with Arquero
 
-Each dataset comes from `vega-datasets` CDN, providing canonical examples for timeseries, tabular, and categorical analysis. Arquero lets you load csv and json data sets. We first need to fetch the raw data from the URLs and then parse them into Arquero tables. Assign any tables you want to reuse to `globalThis` so later cells can opt into the shared state explicitly.
+Each dataset comes from `vega-datasets` CDN, providing canonical examples for timeseries, tabular, and categorical analysis. Arquero lets you load csv and json data sets. We first need to fetch the raw data from the URLs and then parse them into Arquero tables. Variables declared with `let` or `const` won't cross the cells. Variables declared without `const` or `let` will be global and reusable between cells - or you can use `globalThis.variableName` to be explicit.
 
 */
 
 // %% [javascript]
-
-// trick to load csv and json data via fetch
-(async () => {
-  const [tempCSV, penguinsJSON] = await Promise.all([
-    fetch("https://cdn.jsdelivr.net/npm/vega-datasets@3.2.1/data/global-temp.csv").then(r => r.text()),
-    fetch("https://cdn.jsdelivr.net/npm/vega-datasets@3.2.1/data/penguins.json").then(r => r.json())
-  ]);
-
-  globalThis.temp = aq.fromCSV(tempCSV);
-  globalThis.penguins = aq.fromJSON(penguinsJSON);
-
-})();
-
+temp = aq.fromCSV(await fetch("https://cdn.jsdelivr.net/npm/vega-datasets@3.2.1/data/global-temp.csv").then(r => r.text()));
+penguins = aq.fromJSON(await fetch("https://cdn.jsdelivr.net/npm/vega-datasets@3.2.1/data/penguins.json").then(r => r.json()));
 
 // %% [markdown]
 /*
@@ -49,10 +38,10 @@ Preview the first few rows of each dataset directly in the browser.
 */
 
 // %% [javascript]
-globalThis.temp.slice(0, 8);
+temp.slice(0, 8);
 
 // %% [javascript]
-globalThis.penguins.slice(0, 8);
+penguins.sample(8);
 
 // %% [markdown]
 /*
@@ -65,7 +54,7 @@ Draw a simple time-series chart of global temperature anomalies with Observable 
 Plot.plot({
   marks: [
     Plot.ruleY([0], { stroke: "#aaaaaa" }),
-    Plot.line(globalThis.temp, {
+    Plot.line(temp, {
       x: "year",
       y: "temp"
     }),
@@ -78,4 +67,4 @@ Draw a relation between flipper length and body mass of penguins.
 */
 
 // %% [javascript]
-Plot.dot(globalThis.penguins, {x: "Flipper Length (mm)", y: "Body Mass (g)", fill: "Species"}).plot({ grid: true })
+Plot.dot(penguins, {x: "Flipper Length (mm)", y: "Body Mass (g)", fill: "Species"}).plot({ grid: true })
