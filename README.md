@@ -1,5 +1,7 @@
 # Tangent Notebook
 
+> pre-alpha, bugs expected
+
 A JavaScript notebook application built with SvelteKit and TypeScript. Create, edit, and execute JavaScript notebooks with rich visualizations in a clean, professional interface.
 
 ## Features
@@ -73,6 +75,19 @@ The built files will be in `frontend/dist/` - deploy to any static hosting (Verc
 4. **Write code** - Click in a cell to start coding
 5. **Execute** - Press `Shift+Enter` or click the "▶" button
 6. **See results** - Output appears below each cell instantly
+
+### Variable Scope Between Cells
+
+Each code cell executes inside its own wrapper function. Keep these rules in mind when sharing values between cells:
+
+- Use `let` or `const` when the value is only needed inside the current cell. Those bindings are scoped to that cell and disappear once it finishes running.
+- Assigning to a name without `let/const/var` stores the value in the notebook's shared scope. Later cells can read or overwrite it:
+  ```javascript
+  counter = (counter ?? 0) + 1; // persists across cells
+  ```
+- Explicitly writing to `globalThis.foo = ...` does the same thing; it simply makes the intent clearer.
+
+This matches Observable-style behavior: scoped variables stay local, while bare assignments become shared state for subsequent cells.
 
 ### Example: Data Visualization
 
